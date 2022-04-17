@@ -307,3 +307,109 @@
       2. promise
       3. promise + generator
       4. async & await
+    <br>
+
+개발자도구 &rightarrow; 네트워크 &rightarrow; XHR : 비동기 통신 네트워크 보기
+
+* **뷰의 템플릿 문법**
+  
+    데이터 바인딩 `{{ mesage }}`: 뷰 인스턴스에서 정의한 속성들을 화면에 표시하는 방법. 콧수염 괄
+    디렉티브 `v-if` : 뷰로 화면의 요소를 더 쉽게 조작하기 위한 문법. `v-`로 붙는 속성은 뷰 디렉티브임.
+    <br>
+    * 데이터 바인딩 
+    ```
+    <body>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+    <div id="app">
+        <p>{{num}}</p>
+        <p>{{doubleNum}}</p>
+    </div>
+
+    <script>
+
+        new Vue({
+            el: "#app",
+            data:{
+                num: 10
+            },
+            computed:{
+                doubleNum :function(){
+                    return this.num*2
+                }
+            }
+        })
+    </script>
+
+    </body>
+    ```
+    `computed` 속성은 특정 데이터를 이용할 수 있는 속성.
+    <br>
+    * 디렉티브
+    ```
+    <body>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+    <div id="app">
+        <p v-bind:id="uuid" v-bind:class="name">{{num}}</p>
+        <p>{{doubleNum}}</p>
+    </div>
+
+    <script>
+
+        new Vue({
+            el: "#app",
+            data:{
+                num: 10,
+                uuid: "abcd1234",    //특정 태그에 연결하기 위한 id
+                name: "text-blue"
+            },
+            computed:{
+                doubleNum :function(){
+                    return this.num*2
+                }
+            }
+        })
+    </script>
+
+    </body>
+    ```
+    뷰 생성할 때 `uuid`를 생성하고 특정 태그에서 호출해서 지정할 수 있음.
+    <br>
+    ```
+    <body>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+    <div id="app">
+        <p v-bind:id="uuid" v-bind:class="name">{{num}}</p>
+        <p>{{doubleNum}}</p>
+        <div v-if="loading">Loading..</div>
+        <div v-else>test user has been logged in</div>
+        <div v-show="loading">Loading..</div>
+    </div>
+
+    <script>
+
+        new Vue({
+            el: "#app",
+            data:{
+                num: 10,
+                uuid: "abcd1234",    //특정 태그에 연결하기 위한 id
+                name: "text-blue",
+                loading: true
+            },
+            computed:{
+                doubleNum :function(){
+                    return this.num*2
+                }
+            }
+        })
+    </script>
+
+    </body>
+    ```
+    vue로 if문 예제인데
+    `v-if`는 개발자도구 vue에서 체크박스를 풀면 소스에 보이지 않는 아예 사라진 상태이지만,
+    `v-show`는 `display:none`으로 바뀌며 소스에는 남아있는 차이점이 있다.
+    <br>
+    <img src="/vue/bind.png" width="300">
