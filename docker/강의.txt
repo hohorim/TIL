@@ -1,0 +1,190 @@
+[docker교육]
+
+* day1(0808):
+
+# 환경작업 (설치 및 컨테이너 구동)
+- centos - 7 ver VM file: https://drive.google.com/file/d/1zS5pL0TeQJTBzFhRjerhcFhzbMipfX5o/view?usp=sharing
+- vmware workstation  win: https://drive.google.com/file/d/1OPvYhHd9YE-Oe3C5XoMxIigJ_Z-yqT5t/view?usp=sharing
+- redhat site: https://con.dustbox.kr/
+- RedHat site login: docker7 redhat
+- https://docs.vmware.com/en/VMware-Workstation-Pro/16.0/com.vmware.ws.using.doc/GUID-DDCBE9C0-0EC9-4D09-8042-18436DA62F7A.html
+- vm login: root centos
+
+** 만약 redhat 사이트 로그인 시 초기화되었다고 하면 비밀번호를 docker로 해보자
+
+# 수업
+
+Container [docker]: 프로세스화. 관리체계의 일원화가 힘듬
+kubernetes[K8S]: 컨테이너를 관리하기 위한 오케스트레이션 툴. 구글에서 나옴
+openshift [OKD]: 미들웨어. redhat 에서 나옴
+
+-docker 에디션
+ Community Edition (CE)
+ Enterprise Edition (EE)
+ 이걸 넘어서 podman으로 넘어가는 중.
+ docker -> OCI/CRI-O -> runc -> podman 으로 넘어가느중
+
+Docker swarm 은 현재 없음.
+
+Docker engine, Docker registry, Docker compose 주로 사용.
+
+- docker docker 라이브러리 확인
+ > yum list | grep docker
+ centos7 버전은 yum 자체에서도 구성 가능. 커맨드창에 나오지만
+ 8 버전은 나오지 않음. 그래서 podman을 사용함.
+ 
+- docker 아키텍처: 
+	모놀리 아키텍처(ma) -> 하나의 애플리케이션 내의 여러 서비스를 모두 구성하여 사용하는 방식.
+		장점: 배포가 쉽다.
+		단점: 한 곳의 버그나 장애가 나머지에 영향을 끼치기 쉽다. 서비스의 사이즈가 커질수록 사용해야하는 서버의 성능또한 올라가야한다.
+			 업데이트를 하기 위해 코드변경 + 빌드 + 테스트 등 수정사항이 발생하면 전체 재배포를 해야하는 상황 발생.
+	마이크로 서비스 아키텍처(msa) -> 서비스를 최대한의 조각화를 하여 구성하여 사용하는 방식.
+		장점: 개발의 단위 최소화. 배포시간 최소화
+		단점: 개발자도 네트워크지식을 필요로함.
+		
+- 컨테이너 생명주기
+	저장소: 만들어진 이미지가 저장되어 있으며 또는 사용자가 생성한 이미지를 업로드/로그인 기능
+	이미지: 실제파일
+	컨테이너: 프로세스
+
+
+# centos 명령어
+ 
+ docker 설치가능 list
+ > rpm -qa | grep docker
+ 
+ 설치확인
+ > yum list | grep docker
+ 
+ docker 설치
+ > sudo yum install -y yum-utils
+ > sudo yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+ > sudo yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+ 
+ docker 버전확인
+ > docker --version
+ 
+ docker 올라왔는지 확인
+ > systemctl status docker
+ 
+ docker 올리기
+ > systemctl enable --now docker
+ 
+ 자동완성 패키지 설치가능
+ > yum -y install bash-completion
+ 
+ 명령어 히스토리
+ > history
+ 
+ 히스토리 중 명령어 실행
+ > !번호
+ 
+ 경로의 사이즈
+ > du -sh [경로]
+ 
+ disk 용량확인
+ > df
+ 
+ docker 시스템 restart
+ > systemctl restart docker
+ 
+ 현재 시간
+ > date +%H:%M:%S
+ 
+ 
+* day2(0809):
+ 
+- buildah: OCI(Open Container Initiative) 컨테이너 이미지 구축을 용이하게 하는 도구 https://buildah.io/
+- 이미지빌드파일명: docker -> Dockerfile, podman -> Containerfile
+- podman에서 -p 포트 지정할 때 port번호는 1023 이하는 생성할 수 없다.
+
+- 도커는 클라이언트/서버 구조로 나누어져 있음.
+  명령어를 docker로 사용하는 것은 클라이언트 작업.
+  클라이언트가 엔진으로 명령어를 전달하여 엔진은 명령을 해석하고 실행하여 결과를 다시 클라이언트로 출력
+
+- Union File System(UFS): 여러개의 파일시스템을 하나의 파일시스템에 마운트하는 기능
+  총 3계층:
+	. container mount[-v] 		-> merged (실제 사용자가 보는 모습)
+    . container layer [R/W] 	-> upper dir: 컨테이너가 실행될 때 생성되며, 모든 데이터는 현재 계층에 저장된다.
+	. image layer [R/O]			-> low dir
+	
+	컨테이너가 재시작될 경우 upper dir은 초기화됨(휘발성)으로 이를 방지하기 위해 volume(영속성 보장) 사용
+	
+- 이미지 계층구조:
+  레이어 저장방식. image layer는 불변이며 컨테이너가 동작할 때 최상위 layer에 write 가능한 layer가 붙는다.
+  모든 컨테이너의 데이터는 최상위 layer에 저장된다. 최상위 layer까지 새로운 이미지를 만들려면 docker commit 명령어 사용.
+  
+	
+- Docker 이미지의 데이터 관리 장치
+	AUFS: debian계약(ubuntu) 사용
+	Device mapper: 범용 스토리지 드라이버. 프로덕션 사용시 성능 저하
+	overlay: 빠름. 메모리 사용 효율적. container 변경이 많은 경우 성능저하
+
+- 최소한의 도커사이즈로 사용하고 싶다면 redhat/ubi8, alpine image 작업. 단점: 진짜 아무것도 없음.
+
+- createrepo 를 설치하고 list 긁어오고 파일 만들고 복제하면 -> 내부에서 사용가능. image commit 기능처럼
+
+ 
+- docker와 podman 차이
+  podman 은 Pod Manager tool 의 약자로 OCI 표준 container와 런타임을 개발, 관리, 실행할 수 있게 해주는 container engine 
+  (oci: 오픈소스 기반의 컨테이너의 표준사항을 정의)
+  최근 들어 docker보다 podman을 많이 사용한다.
+  podman은 docker와 달리 데몬을 필요로하지 않는다. 그래서 데몬이 죽으면 모든 컨테이너가 중지되는 도커와 달리 이러한 문제가 없다.
+  또한, docker가 ee/ce를 더이상 지원하지 않겠다, 리눅스 파운데이에서 컨테이너의 방향성을 고민하는 등의 이유로.
+  
+- docker의 문제점
+  docker: 하나의 제품에서 컨테이너 런타임, 이미지 관리, 컨테이너 관리, registry 이미지 서버 등 전부 제공
+  oci: 컨테이너 관리 기능 제공, 도커의 기능을 분리하여 독립적인 소프트웨어로 제공
+  docker는 msa를 지향하면서 ma를 가지고있음. 서비스가 독릭접이지 않아 문제가 많음.
+  
+  oci를 갖는 서비스: CRI-O   - K8S oepnshift에서 사용되는 런타임, docker보다 가볍게 사용. 기본적인 컨테이너 환경을 제공하는 것이 목적.
+				 PODMAN   - docker의 클라이언트
+				 Buildah  - docker의 빌드기능
+				 skopeo   - 컨테이너 관리용도
+ 
+
+- 런타임 역할: 컨테이너의 기본적인 생성, 조회를 할 수 있는 환경을 조성
+  컨테이너 생성 시 런타임은 OCI를 통해 runc 기반으로 컨테이너를 생성
+
+- LXC:
+	namespace: 시스템에서 동작하는 프로세서를 시스템과 분리하는 것을 목적으로 하며,
+				이 동작이 일어나면 프로세서를 격리함.
+	cgroup: 모든 자원들이 서로 경쟁하지 않고 각각의 영역에서 격리, 추적이 가능하기 때문에 시스템을 좀 더 안정적으로 사용 가능
+	chroot: 최상위 루트디렉토리를 변경하는 것
+
+- Dockerfile
+	
+	FROM: 빌드에 사용할 이미지 지정
+	LABEL description="string" : 이미지에 대한 설명
+	MAINTAINER 이니셜<mail>: 작성자
+	
+	WORKDIR 빌드에 사용할 작업 디렉토리 변경
+	COPY: 파일이나 디렉토리를 복사
+	ADD: 원격에서 파일 내려받기, 복사하는 경우
+	RUN: 특정 명령어를 일시적으로 실행
+	EXPOSE: 컨테이너 실행 시 특정 포트를 호스트에 노출
+	
+	ENTRYPOINT: 컨테이너 실행 시 특정 프로그램을 실행. 컨테이너가 가동될 때 변경되면 안되는 명령일 떄 사용. 인자 값은 CMD가 좋다.
+		 ex) ENTRYPOINT ["sleep"]
+			 CMD ["1000"]
+	CMD: 컨테이너 실행 시 특정 프로그램을 실행, RUN과 다르게 계층 생성하지 않음. 
+		 명령어, 옵션 인자를 구분하지 못해 "" 내에 작성하고 토큰으로 구별되는 경우에는 , 를 작성.
+		 ex) CMD ["sleep","1000"]
+
+	** 위 둘의 차이점: 컨테이너 시작시 실행 명령에 대한 지정 여부
+				ENTRYPOINT는 컨테이너가 실행될 때 반드시 지정한 명령으로 수행
+				CMD는 인자값으로 변경하여 실행가능. 
+				
+# 동영상 상세
+ 0808(1); 환경설치 및 docker 기본명령어(docker run, docker ps, docker images, docker rm)
+ 0808(2); docker 기본명령어
+ 0809(1); 이미지 계층구조, docker 실행개념
+ 0809(2); podman, 빌드, Dockerfile
+ 0810(1); 빌드, volume, expose
+ 
+ 
+ ubuntu apt
+ centos yum
+ httpd rpm
