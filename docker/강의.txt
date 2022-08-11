@@ -1,0 +1,306 @@
+[docker교육] 강사gitId: studylabdoc or studylab
+
+ubuntu apt
+centos yum
+httpd rpm
+ 
+* day1(0808):
+
+# 환경작업 (설치 및 컨테이너 구동)
+- centos - 7 ver VM file: https://drive.google.com/file/d/1zS5pL0TeQJTBzFhRjerhcFhzbMipfX5o/view?usp=sharing
+- vmware workstation  win: https://drive.google.com/file/d/1OPvYhHd9YE-Oe3C5XoMxIigJ_Z-yqT5t/view?usp=sharing
+- redhat site: https://con.dustbox.kr/
+- RedHat site login: docker7 redhat
+- https://docs.vmware.com/en/VMware-Workstation-Pro/16.0/com.vmware.ws.using.doc/GUID-DDCBE9C0-0EC9-4D09-8042-18436DA62F7A.html
+- vm login: root centos
+
+** 만약 redhat 사이트 로그인 시 초기화되었다고 하면 비밀번호를 docker로 해보자
+
+# 수업
+
+Container [docker]: 프로세스화. 관리체계의 일원화가 힘듬
+kubernetes[K8S]: 컨테이너를 관리하기 위한 오케스트레이션 툴. 구글에서 나옴
+openshift [OKD]: 미들웨어. redhat 에서 나옴
+
+-docker 에디션
+ Community Edition (CE)
+ Enterprise Edition (EE)
+ 이걸 넘어서 podman으로 넘어가는 중.
+ docker -> OCI/CRI-O -> runc -> podman 으로 넘어가느중
+
+Docker swarm 은 현재 없음.
+
+Docker engine, Docker registry, Docker compose 주로 사용.
+
+- docker docker 라이브러리 확인
+ > yum list | grep docker
+ centos7 버전은 yum 자체에서도 구성 가능. 커맨드창에 나오지만
+ 8 버전은 나오지 않음. 그래서 podman을 사용함.
+ 
+- docker 아키텍처: 
+	모놀리 아키텍처(ma) -> 하나의 애플리케이션 내의 여러 서비스를 모두 구성하여 사용하는 방식.
+		장점: 배포가 쉽다.
+		단점: 한 곳의 버그나 장애가 나머지에 영향을 끼치기 쉽다. 서비스의 사이즈가 커질수록 사용해야하는 서버의 성능또한 올라가야한다.
+			 업데이트를 하기 위해 코드변경 + 빌드 + 테스트 등 수정사항이 발생하면 전체 재배포를 해야하는 상황 발생.
+	마이크로 서비스 아키텍처(msa) -> 서비스를 최대한의 조각화를 하여 구성하여 사용하는 방식.
+		장점: 개발의 단위 최소화. 배포시간 최소화
+		단점: 개발자도 네트워크지식을 필요로함.
+		
+- 컨테이너 생명주기
+	저장소: 만들어진 이미지가 저장되어 있으며 또는 사용자가 생성한 이미지를 업로드/로그인 기능
+	이미지: 실제파일
+	컨테이너: 프로세스
+
+
+# centos 명령어
+ 
+ docker 설치가능 list
+ > rpm -qa | grep docker
+ 
+ 설치확인
+ > yum list | grep docker
+ 
+ docker 설치
+ > sudo yum install -y yum-utils
+ > sudo yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+ > sudo yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+ 
+ docker 버전확인
+ > docker --version
+ 
+ docker 올라왔는지 확인
+ > systemctl status docker
+ 
+ docker 올리기
+ > systemctl enable --now docker
+ 
+ 자동완성 패키지 설치가능
+ > yum -y install bash-completion
+ 
+ 명령어 히스토리
+ > history
+ 
+ 히스토리 중 명령어 실행
+ > !번호
+ 
+ 경로의 사이즈
+ > du -sh [경로]
+ 
+ disk 용량확인
+ > df
+ 
+ docker 시스템 restart
+ > systemctl restart docker
+ 
+ 현재 시간
+ > date +%H:%M:%S
+ 
+* day2(0809):
+ 
+- buildah: OCI(Open Container Initiative) 컨테이너 이미지 구축을 용이하게 하는 도구 https://buildah.io/
+- 이미지빌드파일명: docker -> Dockerfile, podman -> Containerfile
+- podman에서 -p 포트 지정할 때 port번호는 1023 이하는 생성할 수 없다.
+
+- 도커는 클라이언트/서버 구조로 나누어져 있음.
+  명령어를 docker로 사용하는 것은 클라이언트 작업.
+  클라이언트가 엔진으로 명령어를 전달하여 엔진은 명령을 해석하고 실행하여 결과를 다시 클라이언트로 출력
+
+- Union File System(UFS): 여러개의 파일시스템을 하나의 파일시스템에 마운트하는 기능
+  총 3계층:
+	. container mount[-v] 		-> merged (실제 사용자가 보는 모습)
+    . container layer [R/W] 	-> upper dir: 컨테이너가 실행될 때 생성되며, 모든 데이터는 현재 계층에 저장된다.
+	. image layer [R/O]			-> low dir
+	
+	컨테이너가 재시작될 경우 upper dir은 초기화됨(휘발성)으로 이를 방지하기 위해 volume(영속성 보장) 사용
+	
+- 이미지 계층구조:
+  레이어 저장방식. image layer는 불변이며 컨테이너가 동작할 때 최상위 layer에 write 가능한 layer가 붙는다.
+  모든 컨테이너의 데이터는 최상위 layer에 저장된다. 최상위 layer까지 새로운 이미지를 만들려면 docker commit 명령어 사용.
+  
+	
+- Docker 이미지의 데이터 관리 장치
+	AUFS: debian계약(ubuntu) 사용
+	Device mapper: 범용 스토리지 드라이버. 프로덕션 사용시 성능 저하
+	overlay: 빠름. 메모리 사용 효율적. container 변경이 많은 경우 성능저하
+
+- 최소한의 도커사이즈로 사용하고 싶다면 redhat/ubi8, alpine image 작업. 단점: 진짜 아무것도 없음.
+
+- createrepo 를 설치하고 list 긁어오고 파일 만들고 복제하면 -> 내부에서 사용가능. image commit 기능처럼
+
+ 
+- docker와 podman 차이
+  podman 은 Pod Manager tool 의 약자로 OCI 표준 container와 런타임을 개발, 관리, 실행할 수 있게 해주는 container engine 
+  (oci: 오픈소스 기반의 컨테이너의 표준사항을 정의)
+  최근 들어 docker보다 podman을 많이 사용한다.
+  podman은 docker와 달리 데몬을 필요로하지 않는다. 그래서 데몬이 죽으면 모든 컨테이너가 중지되는 도커와 달리 이러한 문제가 없다.
+  또한, docker가 ee/ce를 더이상 지원하지 않겠다, 리눅스 파운데이에서 컨테이너의 방향성을 고민하는 등의 이유로.
+  
+- docker의 문제점
+  docker: 하나의 제품에서 컨테이너 런타임, 이미지 관리, 컨테이너 관리, registry 이미지 서버 등 전부 제공
+  oci: 컨테이너 관리 기능 제공, 도커의 기능을 분리하여 독립적인 소프트웨어로 제공
+  docker는 msa를 지향하면서 ma를 가지고있음. 서비스가 독릭접이지 않아 문제가 많음.
+  
+  oci를 갖는 서비스: CRI-O   - K8S oepnshift에서 사용되는 런타임, docker보다 가볍게 사용. 기본적인 컨테이너 환경을 제공하는 것이 목적.
+				 PODMAN   - docker의 클라이언트
+				 Buildah  - docker의 빌드기능
+				 skopeo   - 컨테이너 관리용도
+ 
+
+- 런타임 역할: 컨테이너의 기본적인 생성, 조회를 할 수 있는 환경을 조성
+  컨테이너 생성 시 런타임은 OCI를 통해 runc 기반으로 컨테이너를 생성
+
+- LXC:
+	namespace: 시스템에서 동작하는 프로세서를 시스템과 분리하는 것을 목적으로 하며,
+				이 동작이 일어나면 프로세서를 격리함.
+	cgroup: 모든 자원들이 서로 경쟁하지 않고 각각의 영역에서 격리, 추적이 가능하기 때문에 시스템을 좀 더 안정적으로 사용 가능
+	chroot: 최상위 루트디렉토리를 변경하는 것
+
+- Dockerfile
+	
+	FROM: 빌드에 사용할 이미지 지정
+	LABEL description="string" : 이미지에 대한 설명
+	MAINTAINER 이니셜<mail>: 작성자
+	
+	WORKDIR 빌드에 사용할 작업 디렉토리 변경
+	COPY: 파일이나 디렉토리를 복사
+	ADD: 원격에서 파일 내려받기, 복사하는 경우
+	RUN: 특정 명령어를 일시적으로 실행
+	EXPOSE: 컨테이너 실행 시 특정 포트를 호스트에 노출
+	
+	ENTRYPOINT: 컨테이너 실행 시 특정 프로그램을 실행. 컨테이너가 가동될 때 변경되면 안되는 명령일 떄 사용. 인자 값은 CMD가 좋다.
+		 ex) ENTRYPOINT ["sleep"]
+			 CMD ["1000"]
+	CMD: 컨테이너 실행 시 특정 프로그램을 실행, RUN과 다르게 계층 생성하지 않음. 
+		 명령어, 옵션 인자를 구분하지 못해 "" 내에 작성하고 토큰으로 구별되는 경우에는 , 를 작성.
+		 ex) CMD ["sleep","1000"]
+
+	** 위 둘의 차이점: 컨테이너 시작시 실행 명령에 대한 지정 여부
+				ENTRYPOINT는 컨테이너가 실행될 때 반드시 지정한 명령으로 수행
+				CMD는 인자값으로 변경하여 실행가능. 
+				
+				
+* day3(0810):
+
+- 저장소는 모든 사용자가 이미지를 공유할 수 있다. 
+  공통되는 이미지를 공유하여 관리하고 있기 때문에 저장소의 용량이 기하급수적으로 커지지 않는다.
+ 
+- 볼륨 
+  호스트와 컨테이너 간의 데이터(디렉토리)를 공유하면서 실행한다면 좀 더 수월하게 변경가능.
+  여러 컨테이너와 공유가 가능하다.
+  
+  -v [호스트경로]:[컨테이너경로]
+  경로가 존재하지 않아도 생성된다.
+  "docker volume create [이름]" 명령어로 볼륨 생성하여 호스트경로에 volume이름을 적어서 공유하는 것도 가능.
+  
+- 도커 네트워크:
+  도커 데몬이 올라오면 docker0 생성(172.17.0.1). 가상 bridge 로 구성. 컨테이너의 게이트웨이를 지원.
+  컨테이너 생성시 172.17.0.2.
+  docker network create 를 통해 c class addr 로 ipaddress가 고정된 네트워크를 생성할 수 있다.
+  
+  도커 네트워크는 L2에서 통신
+  
+  docker daemon이 실행되면 디폴트로 생성되는 네트워크: bridge, host, none
+    bridge: 하나의 호스트 컴퓨터 내에서 여러 컨테이너들이 서로 소통가능하도록
+	host: 컨테이너를 호스트 컴퓨터와 동일한 네트워크에서 컨테이너를 돌리기 위해 사용.
+
+  run 옵션 중 --network 로 만들어진 네트워크를 할당 가능하지만, --ip 로 바로 ip주소를 할당할 수 있다.
+  
+  도커는 컨테이너에 IP를 순차적으로 할당. 내부 IP는 컨테이너를 재시작할 때 변경될 가능성이 있다.
+  
+  컨테이너에서 사용되는 내부 IP는 외부랑 연결될 필요가 없다. iptables에서 처리됨.
+  
+  컨테이너를 생성하는 경우에 veth(Virtual Ethernet) 장치가 각 컨테이너에 생성된다. veth 장치는 daemon이 알아서 생성해줌.
+  
+  docker 0는 veth에 바인딩되어 호스트의 NIC로 이어주는 역할. 즉 veth와 NIC는 연결되어있음.
+
+  컨테이너는 브릿지를 통해 외부와 네트워크 통신함.
+
+* day4(0811):
+
+- 완전한 오프라인형태의 망에서 컨테이너를 사용하기 위해선 docker save, docker export 로 레포구축가능.
+- 저장소 공간:
+	registry: 컨테이너 이미지를 저장하는 저장소
+	docker hub
+	private hub
+	
+- 이미지 종류: offcial image, verified publisher(벤더사), etc..(일반 사용자)
+	
+- 리소스 제한: 컨테이너 생성 시 따로 옵션을 설정해주지 않으면 컨테이너는 호스트의 자원을 제한없이 사용가능하도록 설정됨.
+	CPU, MEM, DISK
+
+	** 개념
+      .swap memory: 실제 메모리 RAM이 가득 차 더많은 메모리를 필요로할 때 디스크 공간을 이용하여 부족한 메모리를 대체.
+       메모리 옵션 사용할 때 mem과 swap을 같이 지정해주는 것이 좋다. mem만 설정을 해준다면 swap은 mem의 2배로 자동지정된다.
+
+	  .Ballon memory: 호스트의 메모리가 부족해지면, 게스트로부터 메모리를 빌리고 괜찮아지면 다시 돌려줌
+	
+	mempory 옵션;
+	--memory: 절대 넘어갈 수 없는 용량
+	--memory-swap: mem을 다 사용했을 때 대체되는 용량
+	--memory-reservation: 보장값
+	--oom-kill-disable: OOM(out of memory) killer가 프로세스를 kill 하지 못하도록 보호
+	
+	cpu 옵션;
+	--cpus: 컨테이너가 사용할 cpu core 수 (lscpu: cpu갯수 확인명령어 - CPU(s) 컬럼)
+	--cpuset-cpus: 컨테이너에 부여할 cpu core 지정(index 로 지정한다. lscpu - On-line CPU(s) list 컬럼)
+					cpu index 번호는 0부터 출발.
+	--cpu-shares: 컨테이너가 사용중인 cpu의 비중을 부여. (기본 값 1024)
+	
+	block IO 옵션;
+	--blkio-weight: 블록디바이스 IO의 쿼터[qouta]를 설정하여 사용가능 (기본값 500. 100-1000 설정가능)
+	--blkio-weight-device
+	--device-read-bps: 장치의 읽기 속도 제한
+	--device-write-bps: 장치의 쓰기 속도 제한
+	--device-read-iops: 장치의 읽기 iops 속도 제한
+	--device--write-iops: 장치의 쓰기 iops 속도 제한
+	
+- 도커 compose: 복수개의 컨테이너를 한번에 실행시키는 툴
+ 
+  compose 설치: curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  실행권한 주기 chmod +x /usr/local/bin/docker-compose
+
+  yaml 문법:
+	key-value 형태
+	배열 형태
+	들여쓰기가 중요한데 tab은 안되고 스페이스바로 해줘야함 그래서 tab을 스페이스바로 바꿔주는 설정필요.
+	~/.vimrc 파일 생성해서 입력 
+		syntax on
+		autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab autoindent
+	그리고 yum install vim 설치하고 alias vi='vim' 설정해주면 tab도 먹는다.
+	vimrc로 에디터를 설정할 수 있다.
+	
+  compose syntax:
+    version: '3' -> 1v 네트워크 지원x, 모든 컨테이너가 브릿지 모드 배치, 모든 컨테이너가 연결가능해서 컨테이너가 격리가 안됨.
+					2v yaml 마이너 버전까지 작성해야 함, 서비스를 services 아래에 다중 컨테이너로 구성,
+					volume에 volume name 사용가능, 모든 컨테이너가 서비스 이름과 동일한 호스트이름으로 검색가능,
+					의존성에 대한 검증 및 의존성 확인으로 순차적인 컨테이너 생성(depends_on),
+					실행순서만 제어(컨테이너가 기동되고 내부 프로세스가 완료 처리가 되지 않더라도 실행이 되었다고 판단되면 다음 작업을 진행해버려 문제발생)
+					3v docker swam 지원  
+	services:
+		[name]:					service 이름
+			image:  			dockerhub 나 로컬 image파일(image or build 선택)
+			build: 				image 대신 빌드로 이미지 생성
+				context: 		Dockerfile이 존재하는 디렉토리
+				dockerfile: 	디렉토리에 있는 도커파일의 이름
+			restart:
+				always(컨테이너를 수동으로 내리기 전까지 항상 재시작) | on-failer(컨테이너가 오류가 있을 때 재시작)
+			ports:				지금은 '8080:80' 처럼 따옴표 필요없어짐. 원래는 시간형식이랑 같아 오류나지만 지금은 아님
+			volumes:			호스트볼륨을 볼륨파일로 할경우 하위디렉토리에 볼륨파일이 있어야함
+			network:			service에서 각 컨테이너에도 적용을 시켜줘야함.
+				network1:
+					driver:bridge
+					subnet:
+					gateway: 등등..
+			environment:
+				- MYSQL ~~
+				
+			
+		
+
+
+
+
+- 쉘스크립트파일로 명령어실행
+.sh 확장자 파일 생성 -> #!/usr/bin/bash 작성하고 명령어 작성 -> ./파일.sh 명령어
