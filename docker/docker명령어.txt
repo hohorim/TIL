@@ -1,0 +1,153 @@
+
+# vi edt
+FROM adoptopenjdk/openjdk11
+ARG JAR_FILE= project-0.0.1-SNAPSHOT.jar
+COPY ${JAR_FILE} appProject.jar
+EXPOSE 8082
+ENTRYPOINT ["java","-jar","appProject.jar"]
+
+-> dockerfile 생성
+
+# man docker [run|build 둥]
+-> 설명
+
+# docker build -t [이미지명]:0.1 .
+-> 이미지 빌드
+
+# docker build -t [이미지명]:0.1 -f [도커파일명] .
+-> 이미지 빌드인데 파일이름이 Dockerfile이 아닌경우
+
+# docker tag [이미지:태그] [이미지:태그]
+-> 이미지의 태그변경 하여 새로운 저장
+
+# docker image tag [이미지:태그] [이미지:태그]
+-> 이미지 이름 변경
+
+# docker images
+-> 빌드된 이미지 보기
+
+# docker run -d --rm -p 8082:8082 [이미지명] (호스트 포트번호:컨테이너 포트번호)
+-> 생성 및 실행
+-> 옵션중 --restart=always 는 종료되도 자동재시작되도록 하는 옵션
+-> 볼륨 옵션; -v [호스트 경로]:[컨테이너경로]:ro   ro를 써주면 도커경로는 readonly가 된다.
+            -v [컨테이너경로]; 호스트 경로는 docker inspect [컨테이너명] 에서 Mount 부분 확인.
+-> 포트 옵션; -p 80 . 이건 컨테이너포트이고, 호스트포트는 랜덤연결
+			-P 는 build 시 입력되는 expose 포트와 호스트를 랜덤으로 연결
+-> 링크 옵션; --link [컨테이너명]:[별칭] 컨테이너간 연결
+-> 네트워크 옵션; --network [네트워크명] or --ip [할당할 주소]
+
+# docker update [변경할 자원옵션] [컨테이너명]
+-> 이미 생성된 컨테이너에 대한 설정된 자원 변경. docker run 명령어에도 자원옵션 존재
+-> --memory, --cpu-shares 등
+
+# jar 파일 만들 때 run configu~ 에 goal에다가 lib:copy-dependencies 치면 라이브러리 lib 폴더 만들어짐
+그런다음 install 해서 만들어진 실행파일에(jar) lib 파일 집어넣음
+
+# docker rmi (-f) [이미지명] : 컨테이너가 존재해도 -f 옵션넣으면 삭제가능
+
+# docker rmi $(docker images -f "dangling=true" -q)
+-> 이미지명 <none> 인 이미지 제거
+
+# docker rm (-f) [컨테이너명] : -f 옵션은 실행중인 컨테이너 강제제거
+
+# docker logs [컨테이너명]
+-> 컨테이너 내부 로그출력
+
+# docker events -f container=[컨테이너명]
+-> 실행중인 컨테이너의 이벤트정보 출력
+
+# docker stats [컨테이너명]
+-> 실행중인 컨테이너 상태확인
+
+# docker inspect [컨테이너명]
+-> 실행중인 컨테이너 정보확인
+
+# docker top [컨테이너명]
+-> 컨테이너 상태확인
+
+# docker pause [컨테이너명]
+-> 컨테이너 일시정지
+
+# docker unpause [컨테이너명]
+-> 일시정지된 컨테이너 다시시작
+
+# docker port [컨테이너명]
+-> 컨테이너에서 사용중인 포트확인
+
+# docker cp [컨테이너명]:[컨테이너 파일경로] [호스트 경로]/[호스트 파일경로] [컨테이너명:경로]
+-> 컨테이너 내부/외부에서 파일을 복사해야하는 경우, 좌에서 우로 복사
+
+# docker image inspect [이미지명]
+-> 이미지 게층구조확인
+
+# docker rm $(docker ps -a -q)
+-> 전체 컨테이너 삭제 (-q 이제 명만 나오는 것)
+
+# docker rmi $(docker images -q)
+-> 전체 이미지 삭제
+
+# systemctl restart docker
+-> 모든 컨테이너 데몬 재시작
+
+# docker save -o [저장할 파일명.tar] [이미지명]
+-> 이미지 파일저장
+
+# docker export -o [저장할 파일명.tar] [컨테이너명]
+-> 컨테이너 저장
+
+# docker import [컨테이너 저장한 파일명.tar]
+-> 컨테이너로 저장된 파일에서 이미지를 뽑아 이미지 저장
+
+# docker stop [컨테이너명]
+-> 컨테이너 종료 (kill signal -15)
+
+# docker kill [컨테이너명]
+-> 컨테이너 강제종료 (kill signal -9)
+
+# docker restart [컨테이너명]
+-> 컨테이너 재시작(이미 생성된 컨테이너)
+
+# docker attach [컨테이너명]
+-> 실행중인 컨테이너 터미널 접속, (>exit; 종료후 터미널 나오기, >ctrl p + ctrl q; 동작유지한 채 터미널 나오기)
+-> run 할 때 옵션중 -t 를 줘야만 터미널접근가능. -t를 안준다면 exec로 접근
+
+# docker exec [컨테이너명] [명령어]
+-> 실행중인 컨테이너 shell에 직접 접근안하고 명령어 입력. ex)docker exec -it [컨테이너명] /bin/bash
+
+# docker diff [컨테이너명]
+-> 부모이미지와 컨테이너에서 파생된 이미지 간 변경사항 확인
+
+# docker commit [컨테이너명] [이름]:[tag]
+-> 실행중인 컨테이너 이미지화.
+
+# docker pull [이미지명:tag]
+-> 저장소에서 이미지 가져오기
+
+# docker push [hub Id명]/[이미지명:tag]
+-> 저장소에 로컬이미지 push. push 할 이미지명을 [hub Id명]/[이미지명:tag] 형식으로 바꾸고난 후 push 진행해야됨.
+
+# docker volume create [이름]
+-> 볼륨 생성
+
+# docker history [이미지명]
+-> 이미지 변경사항 이력확인
+
+# docker network create -d [bridge|host] [네트워크명]
+-> 네트워크 생성
+
+# docker network disconnect [drive명 or 네트워크명] [컨테이너명]
+-> 컨테이너 네트워크 끊기
+
+# docker network connect [drive명 or 네트워크명] [컨테이너명]
+-> 컨테이너 네트워크 연결
+
+# docker-compose up -d
+-> compose파일 실행
+-> docker-compose up -f [compose파일 경로] -d 도 가능
+
+# docker-compose down
+-> compose파일 종료
+-> -> docker-compose -f [compose파일 경로] down 도 가능
+
+# prometheus
+docker run -d --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus:v1.7.0
