@@ -1,0 +1,40 @@
+-src/main/resources/application.properties
+
+	spring.rabbitmq.username=admin
+	spring.rabbitmq.password=admin
+	spring.rabbitmq.host=localhost
+	spring.rabbitmq.port=5672
+
+입력
+
+-pom.xml
+	<dependency>
+	  <groupId>com.rabbitmq</groupId>
+	  <artifactId>amqp-client</artifactId>
+	  <version>5.15.0</version>
+	</dependency>
+
+	<dependency>
+	    <groupId>org.springframework.boot</groupId>
+	    <artifactId>spring-boot-starter-amqp</artifactId>
+	</dependency>	
+
+
+-rabbitmq 로 데이터를 쏴줄 메소드에
+
+	@Autowired
+	RabbitTemplate rabbitTemplate;
+	@Autowired
+	ObjectMapper objectMapper;
+	
+	dto class명 msg = new class(
+			result.getTenantId()
+			,result.getProjectId()
+			,result.getTeamId()
+			,result.getUserId()
+			,"N"	// createYn
+			,"Y");	// deleteYn
+
+	String json = objectMapper.writeValueAsString(msg);
+
+	rabbitTemplate.convertAndSend("bim.service.exchage", "bim.project.routing.*", json); 
