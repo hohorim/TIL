@@ -32,7 +32,7 @@ Docker swarm 은 현재 없음.
 
 Docker engine, Docker registry, Docker compose 주로 사용.
 
-- docker docker 라이브러리 확인
+- docker 라이브러리 확인
  > yum list | grep docker
  centos7 버전은 yum 자체에서도 구성 가능. 커맨드창에 나오지만
  8 버전은 나오지 않음. 그래서 podman을 사용함.
@@ -76,7 +76,7 @@ Docker engine, Docker registry, Docker compose 주로 사용.
  docker 올리기
  > systemctl enable --now docker
  
- 자동완성 패키지 설치가능
+ 자동완성 패키지 설치
  > yum -y install bash-completion
  
  명령어 히스토리
@@ -96,6 +96,12 @@ Docker engine, Docker registry, Docker compose 주로 사용.
  
  현재 시간
  > date +%H:%M:%S
+ 
+ 파일이존재해도 폴더삭제
+ > rm -rf [폴더명]
+ 
+ 파일내에 찾을 문자열이 존재하는 파일경로출력
+ > find . [찾을문자열]
  
 * day2(0809):
  
@@ -281,26 +287,60 @@ Docker engine, Docker registry, Docker compose 주로 사용.
 	services:
 		[name]:					service 이름
 			image:  			dockerhub 나 로컬 image파일(image or build 선택)
+			container_name:		컨테이너 이름
 			build: 				image 대신 빌드로 이미지 생성
 				context: 		Dockerfile이 존재하는 디렉토리
 				dockerfile: 	디렉토리에 있는 도커파일의 이름
-			restart:
-				always(컨테이너를 수동으로 내리기 전까지 항상 재시작) | on-failer(컨테이너가 오류가 있을 때 재시작)
-			ports:				지금은 '8080:80' 처럼 따옴표 필요없어짐. 원래는 시간형식이랑 같아 오류나지만 지금은 아님
+			restart: always(컨테이너를 수동으로 내리기 전까지 항상 재시작) | on-failer(컨테이너가 오류가 있을 때 재시작)
+			ports:				지금은 '8080:80' 처럼 따옴표 필요없어짐. 원래는 시간형식으로 인식하여 오류나지만 지금은 아님
 			volumes:			호스트볼륨을 볼륨파일로 할경우 하위디렉토리에 볼륨파일이 있어야함
-			network:			service에서 각 컨테이너에도 적용을 시켜줘야함.
-				network1:
-					driver:bridge
-					subnet:
-					gateway: 등등..
-			environment:
-				- MYSQL ~~
-				
-			
-		
-
-
-
-
+			networks:			
+				- network1
+				- network2
+			environment:		환경쓸때 = 이 아닌 : 로 할 때는 앞쪽에 - 빼야됨
+				- MYSQL ~~=~~
+				MYSQL ~~~: ~
+				**만약 환경변수 값이 많다면 key value 파일로 생성해서 설정하는 것도 가능
+				env_file:		경로에 있는 파일에는 공백을 허용하지않음
+					- [file 경로]
+	networks:					network 만들고 service에서 컨테이너에도 적용시켜주면됨.
+		network1:
+			driver:bridge
+			subnet:
+			gateway: 등등..
+		network2:
+			driver:bridge
+	
 - 쉘스크립트파일로 명령어실행
 .sh 확장자 파일 생성 -> #!/usr/bin/bash 작성하고 명령어 작성 -> ./파일.sh 명령어
+	
+* day5(0812):
+ 
+ - 추천사항:
+	cpu -> intel 보다 AMD ; core수가 많음
+	mem -> 32
+	disk -> 256
+	네트워크 -> 둘다 구성하여
+	cpu에서 가상화 기능 지원
+	rocky, centos 8,9 버전
+	vmware worstation, 베이그런트
+	
+	클러스터화 된 풀의 중앙제어
+	마스터서버에서 모든 나머지 서버에 대한 중앙 관리
+	노트 스케일링
+	상태관리 - 사용자[관리자/개발자] 즉각적인 변화
+	스케쥴링
+	배포 - 할때마다 여유로운 서버 확인
+	컨테이너의 버전에 대한 롤백/롤아웃
+	
+ - 수동설치
+	계층구조 파일 시스템
+	snat dnat 커널모듈
+	
+	#lsmod
+	sysconfig, 방화벽
+	tc
+	swap
+	kubeadmin init: api 서버는 어느걸로 쓸거냐, socket은 어떤걸 쓸거냐 등
+	
+	
