@@ -1,0 +1,27 @@
+version: '3'
+services:
+        mysql:
+                image: mysql:5.7.16
+                container_name: mysql
+                ports:
+                        - '13306:3306'
+                env_file:
+                        - ./env/mysql
+                volumes:
+                        - ./mysql_data:/var/lib/mysql
+                restart: always
+        wordpress:
+                depends_on:
+                        - mysql
+                image: wordpress
+                container_name: wordpress
+                ports:
+                        - '8085:80'
+                environment:
+                        - WORDPRESS_DB_PASSWORD=1234
+                        - WORDPRESS_DB_USER=root
+                        - WORDPRESS_DB_HOST=mysql
+                        - WORDPRESS_DB_NAME=wp
+                volumes:
+                        - ./wp_data:/var/www/html
+                restart: always
