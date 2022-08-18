@@ -1,0 +1,20 @@
+Kubernetes 강의교육
+
+# Day 1
+
+- Pod: 컨테이너를 하나이상을 모아 넣은 것
+
+- k8s goal: Desired State Management
+- yaml 기본틀
+	apiVersion:
+	kind:
+	metadata:
+		name:
+	spec:
+	
+- master vm은 최소 4g 이상, worker vm은 3g 이상
+
+2:37:57
+
+- centos 실행을 위해 windows 기능에서 가상머신플랫폼 체크해제해줌
+- centos login: root/k8spass#
