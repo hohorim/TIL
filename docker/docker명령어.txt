@@ -149,5 +149,8 @@ ENTRYPOINT ["java","-jar","appProject.jar"]
 -> compose파일 종료
 -> -> docker-compose -f [compose파일 경로] down 도 가능
 
+# docker cp [파일명] [컨테이너명]:[경로및파일명]
+-> 로컬에 있는 파일을 컨테이너 경로로 파일복사
+
 # prometheus
 docker run -d --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus:v1.7.0
