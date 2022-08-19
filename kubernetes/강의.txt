@@ -1,0 +1,179 @@
+Kubernetes 강의교육
+
+* Day 1
+
+- Pod: 컨테이너를 하나이상을 모아 넣은 것
+
+- k8s goal: Desired State Management
+- yaml 기본틀
+	apiVersion:
+	kind:
+	metadata:
+		name:
+	spec:
+	
+- master vm은 최소 4g 이상, worker vm은 3g 이상
+
+2:37:57
+
+- centos 실행을 위해 windows 기능에서 가상머신플랫폼 체크해제해줌. (이것때문에 wsl 가상머신이 돌아가지 않음)
+- virtual box sms 6.0.4버전
+- centos login: root/k8spass#
+- vm 네트워크:
+	어댑터1 NAT 는 외부네트워크 (external)
+	어댑터2 호스트 전용어댑터 는 호스트 전용(internal)->infral
+
+- kubernetes 구축
+  1. vm 설치
+  2. centos 설치 및 환경구성
+  3. docker-ce + kubernetes 설치
+  4. node 구성을 위한 복제 (master vm을 토대로 worker vm 3개 복제)
+  5. matser + node1 + node2 구성 -> init -> join
+  6. 네트워크 plugin 추가
+  7. dashboard 연결 -> secure, CA(인증서)
+  
+  
+- xfs 가 ext4 보다 권장사항. 속도가 빠름.
+
+- yum: /etc/yum.repos.d/
+- apt: /etc/apt/sources.list
+
+docker-ce: community edition
+docker-ee: enterprise edition (유료)
+
+- cgroup의 상위 데몬 systemd. k8s는 cgroup 사용안함.
+
+- GPG: GNU Package GUIDE. 패키지 보안 인증 
+
+- kubernetes tools
+	1) kubeadm init -> k8s cluster bootstrap 초기화
+	   kubeadm upgrade
+	2) kubectl -> api calls 시 사용. Pod 동의 api-resource 생성/관리/삭제 시에도 사용.
+	3) kubelet -> 모든 노드에 설치, 노드 간 통신
+		
+		
+	* kubeadm init 할 때 [error cri] 에러 해결: 
+		# rm /etc/containerd/config.toml
+		# systemctl restart containerd 
+		명령어 진행 후 다시 init 실행. kubeadm join도 같은 에러나서 위 솔루션으로 해결함
+		
+[root@k8s-master ~]# kubeadm init --pod-network-cidr=10.56.0.0/12 --apiserver-advertise-address=192.168.56.100
+[init] Using Kubernetes version: v1.24.4
+[preflight] Running pre-flight checks
+	(생략)
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.56.100:6443 --token h68h1k.1fuevqv9bj17t0hc \
+        --discovery-token-ca-cert-hash sha256:d5dd1e1bd8b5548600f43d6a6bb817b52afeb9681c9abc27a14ad15b19621741
+	
+	위 명령어 4개를 입력하고 마지막에 kubeadm join을 node1,2 머신에 명령어입력하면 join 됨.
+	근데 join 명령어 전에 각 node 머신에 # ssh [master 머신 hostname] 으로 연결부터 해준다. master에서도 연결해준다
+	master에서 # kubectl get node 로 join 확인
+
+- Calico : 가상머신이나 컨테이너를 위한 네트워킹, IP 관리, 접근 제어, 모니터링 등 다양한 네트워크 관련 기능을 제공하는 오픈소스 프로젝트이다.
+
+- calico 설치
+# curl https://raw.githubusercontent.com/projectcalico/calico/v3.24.0/manifests/calico.yaml -O
+# kubectl apply -f calico.yaml
+# kubectl get pod --all-namesspaces
+
+- kubectl 자동완성 추가
+보통 yum bash-completion 이 자동완성으로 설치가 되어있는데 kubectl에는 다시 적용시켜줘야함.
+# source <(kubectl completion bash)
+# ehco "source <(kubectl completion bash)" >> ~/.bashrc 
+
+- alias
+# alias k='kubectl'
+# alias d='docker' 
+등으로 명령어 줄일수 있음
+
+
+- dashboard start 방법
+	1) proxy(8001) : GKE에서 사용
+	2) apiserver(6443) : hosts server에서 사용
+	3) NodePort(30000~32767) : 외부 연결용
+	
+	dashboard 연결주소
+	https://192.168.56.100:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
+	보안 인증, 권한설정을 해야 접근가능.
+	
+* Day 2
+
+- apiserver 를 이용한 dashboard 구성(+ cacert)
+	1) 현재 설치한 대시보드에 권한 설정: clusterrole -> verb=create 식으로 옵션을 주면됨.
+	2) clusterrole을 사용할 수 있는 계정: serviceaccount(프로세스를 제어하기 위한 계정). <프로세스는 즉 container>
+	3) clusterrolebinding: clusterrole + serviceaccount 를 binding
+	4) openssl을 이욯나 인증서 생성: 리눅스에 있는 인증서를 windows로 옮길거임
+	5) certutil.exe(컴퓨터 인증서관리)를 이용해서 certmgr.msc에 등록
+	6) 크롬 시크릿모드에 인증서와 함께 dashboard 연결
+	7) token access 진행
+
+
+	- 시작
+	# kubectl get clusterrole: role list 
+	# kubectl describe clusterrole [role name]: 해당 role에 대한 권한확인
+	
+	# kubectl get pod --all-namespaces: namespace list
+	# kubectl get sa(serviceaccount) -n [namespace 명]: 해당 namespace에 대한 serviceaccount 확인
+	# kubectl describe -n [namespace 명] sa [namespace 명]: 더 자세한 sa 확인
+	
+	# vi ClusterRoleBinding.yaml: 1)과 2) 작업을 binding
+		apiVersion: rbac.authorization.k8s.io/v1
+		kind: ClusterRoleBinding
+		metadata:
+		  name: kubernetes-dashboard2
+		  labels:
+			k8s-app: kubernetes-dashboard
+		roleRef:
+		  apiGroup: rbac.authorization.k8s.io
+		  kind: ClusterRole
+		  name: cluster-admin
+		subjects:
+		- kind: ServiceAccount
+		  name: kubernetes-dashboard
+		  namespace: kubernetes-dashboard
+	# kubectl apply -f ClusterRoleBinding.yaml
+	
+	# grep 'client-certificate-data' ~/.kube/config | head -n 1 | awk '{print $2}' | base64 -d >> kubecfg.crt: 인증서만들기
+	# grep 'client-key-data' ~/.kube/config | head -n 1 | awk '{print $2}' | base64 -d >> kubecfg.key: 인증서 만들기
+	# openssl pkcs12 -export -clcerts -inkey kubecfg.key -in kubecfg.crt -out kubecfg.p12 -name "kubernetes-admin"
+	# cp /etc/kubernetes/pki/ca.crt .
+
+	ftp 프로그램(파일질라, wincp) 로 dashboard 자체 폴더를 윈도우로 옮겨주기
+	
+	> window powerShell 관리자모드
+		# certutil.exe -addstore "Root" [dashboard폴더 경로]\ca.crt
+		# certutil.exe -p [비밀번호] -user -importPFX [dashboard폴더 경로]/kubecfg.pl2
+		# sertmgr.msc: 컴퓨터 인증서확인 창에서 인증서 확인
+		
+	- centos dashboard token:
+		https://192.168.56.100:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
+		
+	- GCP dashboard token:
+		https://localhost:8080/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
+		
+		
+	- 위 192.168.56.100 url 들어가서 쿠퍼네티스창 확인
+		token 값구하기:
+			# kubectl get pod --all-namespaces: namespace 명이 kubernetes-dashboard 인 것 찾고 확인
+			# kubectl -n [namespace명] describe secrets: namespace 명은 위에서 찾은 list 중 kubernetes-dashboard 가 된다.
+			
+			token이 안뜬다..
+
+			serviceaccount 도 떠야하는 것 같은데 안뜬다. 다시 들어야할 것같다... n day2의 1번째꺼 보는중..
