@@ -2,28 +2,37 @@ Kubernetes 강의교육
 
 * Day 1
 
-- Pod: 컨테이너를 하나이상을 모아 넣은 것
+- LXC(Linux Container): 
+	- chroot: 최상위폴더 변경. 가상공간을 생성해줌.
+	- namespace: 프로세스 별 리소스를 따로 사용. 네트워크할당해줌
+	- cgroup: 프로세스 별 가용 컴퓨팅 시스템을 분리. 자원할당해줌
+	
+- Pod: 컨테이너를 하나이상을 모아 넣은 것.
 
-- k8s goal: Desired State Management
+- Orachestration 도구: 분산 클러스트화된 환경에서의 서비스를 운영관리하는 플랫폼(컨테이너의 배포, 관리, 확장, 네트워킹 자동화) (PaaS)
+
+- k8s goal: Desired State Management(사용자가 정의한 구성에 맞춰 사용자가 기대하는 상태로 동작하도록 안정적으로 유지해주는 것)
+
 - yaml 기본틀
 	apiVersion:
 	kind:
 	metadata:
 		name:
 	spec:
-	
-- master vm은 최소 4g 이상, worker vm은 3g 이상
 
-2:37:57
+-vm 생성
+	- master node은 최소 4g 이상, worker node은 3g 이상 vm 생성
+		master node (=control plane): 관리 영역, no Pod
+		worker node: pod(application workload) 생성
 
-- centos 실행을 위해 windows 기능에서 가상머신플랫폼 체크해제해줌. (이것때문에 wsl 가상머신이 돌아가지 않음)
-- virtual box sms 6.0.4버전
-- centos login: root/k8spass#
-- vm 네트워크:
-	어댑터1 NAT 는 외부네트워크 (external)
-	어댑터2 호스트 전용어댑터 는 호스트 전용(internal)->infral
+	- centos 실행을 위해 windows 기능에서 가상머신플랫폼 체크해제해줌. (이것때문에 wsl 가상머신이 돌아가지 않음)
+	- virtual box sms 6.0.4버전
+	- centos login: root/k8spass#
+	- vm 네트워크:
+		어댑터1 NAT 는 외부네트워크 (external)
+		어댑터2 호스트 전용어댑터 는 호스트 전용(internal)->infral
 
-- kubernetes 구축
+- kubernetes 구축 
   1. vm 설치
   2. centos 설치 및 환경구성
   3. docker-ce + kubernetes 설치
@@ -32,18 +41,39 @@ Kubernetes 강의교육
   6. 네트워크 plugin 추가
   7. dashboard 연결 -> secure, CA(인증서)
   
-  
-- xfs 가 ext4 보다 권장사항. 속도가 빠름.
+- kubernetes 를 위한 사전 OS 구성(master node)
+  - 보안 구성 OFF: SELinux down(permissive) / firewalld-cmd(방화벽) 해제
+			# vi /etc/selinux/config
+				SELINUX=permissive 변경: selinux down
+			# setenforce 0
+			# sestatus: permissive 바뀐 것 확인
+			# systemctl stop firewalld && systemctl disable firewalld: 방화벽 해제
+				설치 이후에는 방화벽 재구성을 따로해야함.
+  - container(process)가 반드시 physical memory에서만 구동: swap off
+			# swapoff -a
+			# vi /etc/fstab
+				#/dev/mapper/centos_k8s--master-swap swap 주석처리
+  - network packet
+			# cat /proc/sys/net/ipv4/ip_forward: 1이 출력되야됨. 아니라면 node끼리 join 할 때 에러남.
+  - iptables가 bridge 된 트래픽 인식하게 하기
+			# modprobe br_netfilter
+			# lsmod | grep br_netfilter: 확인
+			# vi /etc/modules-load.d/k8s.conf
+				br_netfilter 입력저장
+			# vi /etc/sysctl.d/k8s.conf
+				net.bridge.bridge-nf-call-ip6tables = 1
+				net.bridge.bridge-nf-call-iptables = 1 입력저장
+			# sysctl --system /etc/sysctl.d/k8s.conf: 확인
 
+- xfs 가 ext4 보다 권장사항. 속도가 빠름.
 - yum: /etc/yum.repos.d/
 - apt: /etc/apt/sources.list
-
-docker-ce: community edition
-docker-ee: enterprise edition (유료)
-
 - cgroup의 상위 데몬 systemd. k8s는 cgroup 사용안함.
 
-- GPG: GNU Package GUIDE. 패키지 보안 인증 
+- 도커설치는 yum 디렉토리에 docker.repo 파일 만들고 yum update 한 후 docker service를 올리면 도커설치완료
+	# systemctl status docker: 도커 상태
+- kubernetes 설치도 kubernetes.repo 파일 만들고 서비스올리면됨.
+	- GPG: GNU Package GUIDE. 패키지 보안 인증 
 
 - kubernetes tools
 	1) kubeadm init -> k8s cluster bootstrap 초기화
@@ -51,52 +81,53 @@ docker-ee: enterprise edition (유료)
 	2) kubectl -> api calls 시 사용. Pod 동의 api-resource 생성/관리/삭제 시에도 사용.
 	3) kubelet -> 모든 노드에 설치, 노드 간 통신
 		
-		
-	* kubeadm init 할 때 [error cri] 에러 해결: 
+	* kubeadm init 할 때 [error cri] 에러 해결:  **kube 1.24 버전부터는 에러가남. 1.23은 에러안남.
 		# rm /etc/containerd/config.toml
 		# systemctl restart containerd 
 		명령어 진행 후 다시 init 실행. kubeadm join도 같은 에러나서 위 솔루션으로 해결함
-		
-[root@k8s-master ~]# kubeadm init --pod-network-cidr=10.56.0.0/12 --apiserver-advertise-address=192.168.56.100
-[init] Using Kubernetes version: v1.24.4
-[preflight] Running pre-flight checks
-	(생략)
-Your Kubernetes control-plane has initialized successfully!
-
-To start using your cluster, you need to run the following as a regular user:
-
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-Alternatively, if you are the root user, you can run:
-
-  export KUBECONFIG=/etc/kubernetes/admin.conf
-
-You should now deploy a pod network to the cluster.
-Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
-  https://kubernetes.io/docs/concepts/cluster-administration/addons/
-
-Then you can join any number of worker nodes by running the following on each as root:
-
-kubeadm join 192.168.56.100:6443 --token h68h1k.1fuevqv9bj17t0hc \
-        --discovery-token-ca-cert-hash sha256:d5dd1e1bd8b5548600f43d6a6bb817b52afeb9681c9abc27a14ad15b19621741
 	
-	위 명령어 4개를 입력하고 마지막에 kubeadm join을 node1,2 머신에 명령어입력하면 join 됨.
-	근데 join 명령어 전에 각 node 머신에 # ssh [master 머신 hostname] 으로 연결부터 해준다. master에서도 연결해준다
-	master에서 # kubectl get node 로 join 확인
+# kubeadm init --pod-network-cidr=10.96.0.0/12 --apiserver-advertise-address=192.168.56.100
+	[init] Using Kubernetes version: v1.24.4
+	[preflight] Running pre-flight checks
+		(생략)
+	Your Kubernetes control-plane has initialized successfully!
+
+	To start using your cluster, you need to run the following as a regular user:
+
+	  mkdir -p $HOME/.kube
+	  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+	Alternatively, if you are the root user, you can run:
+
+	  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+	You should now deploy a pod network to the cluster.
+	Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+	  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+	Then you can join any number of worker nodes by running the following on each as root:
+
+	kubeadm join 192.168.56.100:6443 --token m1coue.w4kouj5439pc78as \
+        --discovery-token-ca-cert-hash sha256:a6249bc1644ae598fec14c2b0f7a18e4ce43bc7f2012ee0ba8fd97e6792a832c
+		
+	- 위 명령어 4개를 입력하고 마지막에 kubeadm join을 node1,2 머신에 명령어입력하면 join 됨.
+		근데 join 명령어 전에 각 node 머신에 # ssh [master 머신 hostname] 으로 연결부터 해준다. master에서도 연결해준다
+
+	# yum repolist: 설치된 라이브러리확인
+	# kubectl get nodes: run 되고 있는 node (join 확인) - calico가 올라가야 notready 상태에서 ready로 변함
 
 - Calico : 가상머신이나 컨테이너를 위한 네트워킹, IP 관리, 접근 제어, 모니터링 등 다양한 네트워크 관련 기능을 제공하는 오픈소스 프로젝트이다.
 
 - calico 설치
-# curl https://raw.githubusercontent.com/projectcalico/calico/v3.24.0/manifests/calico.yaml -O
-# kubectl apply -f calico.yaml
-# kubectl get pod --all-namesspaces
+# curl https://docs.projectcalico.org/manifests/calico.yaml -O
+# kubectl apply -f calico.yaml: yaml을 apply 하는 것은 pod를 생성하는 것.
+# kubectl get pod --all-namespaces
 
 - kubectl 자동완성 추가
 보통 yum bash-completion 이 자동완성으로 설치가 되어있는데 kubectl에는 다시 적용시켜줘야함.
 # source <(kubectl completion bash)
-# ehco "source <(kubectl completion bash)" >> ~/.bashrc 
+# echo "source <(kubectl completion bash)" >> ~/.bashrc 
 
 - alias
 # alias k='kubectl'
@@ -105,25 +136,37 @@ kubeadm join 192.168.56.100:6443 --token h68h1k.1fuevqv9bj17t0hc \
 
 
 - dashboard start 방법
+	https://github.com/kubernetes/dashboard/releases: kubectl version 에 맞게 installation 명령어 복붙해서 입력
+		
+	# kubectl get pod --all-namespaces: kubernetes-dashboard 2개 올라온거 확인
+	
 	1) proxy(8001) : GKE에서 사용
-	2) apiserver(6443) : hosts server에서 사용
+	2) apiserver(6443) : host server에서 사용
 	3) NodePort(30000~32767) : 외부 연결용
 	
-	dashboard 연결주소
-	https://192.168.56.100:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
-	보안 인증, 권한설정을 해야 접근가능.
+	# kubectl cluster-info : dashboard 연결주소 -> 보안 인증, 권한설정을 해야 접근가능.
+		https://192.168.56.100:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+		아래처럼 변경해야함
+		https://192.168.56.100:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
+
+	# kubectl describe pod [NAME] -n [NAMESPACE]:
+		kubectl get pod --all-namespaces 할 때 나오는 거 이용해서 사용.
+	# kubectl describe node [vm명]: ex.kubectl describe node k8s-master
+	# kubectl -n [NAMESPACE] get secrets
+	# kubectl -n [NAMESPACE] describe secrets [NAME]: dashboard login 시 필요한 토큰 조회
+	
+	# kubectl api-resources: 약칭
 	
 * Day 2
 
 - apiserver 를 이용한 dashboard 구성(+ cacert)
 	1) 현재 설치한 대시보드에 권한 설정: clusterrole -> verb=create 식으로 옵션을 주면됨.
-	2) clusterrole을 사용할 수 있는 계정: serviceaccount(프로세스를 제어하기 위한 계정). <프로세스는 즉 container>
+	2) clusterrole을 사용할 수 있는 계정: serviceaccount(프로세스를 제어하기 위한 계정 -> 프로세스는 즉, container)
 	3) clusterrolebinding: clusterrole + serviceaccount 를 binding
 	4) openssl을 이욯나 인증서 생성: 리눅스에 있는 인증서를 windows로 옮길거임
 	5) certutil.exe(컴퓨터 인증서관리)를 이용해서 certmgr.msc에 등록
 	6) 크롬 시크릿모드에 인증서와 함께 dashboard 연결
 	7) token access 진행
-
 
 	- 시작
 	# kubectl get clusterrole: role list 
@@ -160,20 +203,191 @@ kubeadm join 192.168.56.100:6443 --token h68h1k.1fuevqv9bj17t0hc \
 	> window powerShell 관리자모드
 		# certutil.exe -addstore "Root" [dashboard폴더 경로]\ca.crt
 		# certutil.exe -p [비밀번호] -user -importPFX [dashboard폴더 경로]/kubecfg.pl2
-		# sertmgr.msc: 컴퓨터 인증서확인 창에서 인증서 확인
+		# certmgr.msc: 컴퓨터 인증서확인 창에서 인증서 확인
 		
 	- centos dashboard token:
 		https://192.168.56.100:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
-		
-	- GCP dashboard token:
-		https://localhost:8080/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
-		
-		
+	
 	- 위 192.168.56.100 url 들어가서 쿠퍼네티스창 확인
 		token 값구하기:
 			# kubectl get pod --all-namespaces: namespace 명이 kubernetes-dashboard 인 것 찾고 확인
 			# kubectl -n [namespace명] describe secrets: namespace 명은 위에서 찾은 list 중 kubernetes-dashboard 가 된다.
-			
-			token이 안뜬다..
 
-			serviceaccount 도 떠야하는 것 같은데 안뜬다. 다시 들어야할 것같다... n day2의 1번째꺼 보는중..
+			eyJhbGciOiJSUzI1NiIsImtpZCI6IjI1ZWozY1IxcGo5TlpOQm1VS0lGQzRNRjhVZEFMVHMwRTFUOTZmX2N1eWMifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJrdWJlcm5ldGVzLWRhc2hib2FyZC10b2tlbi10d3hnNiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImI4OTE0MTU2LTQ3ZWQtNDIxNC05NGI0LWE5OTBmZTQ5ZTc1MSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDprdWJlcm5ldGVzLWRhc2hib2FyZDprdWJlcm5ldGVzLWRhc2hib2FyZCJ9.wP6Q7eKInOlr_ekiwYff5AtY-JosfupqKRT7WSt2eaxc0vhFxm6esRTKS_NWavFjbBDoJJ-M8i1tUHkiXIfC0ZvTlikgA-Hi7lWPNq49VVhqv2nH3-5T6yRlu7req6yS_Cz2x3oFbdKRLdE1hzKIwogN90xgH5lmYusCNaAAMA_2aTdQfSXxYGLieUu05bYT-PBpWBFbX7JKjPKgdud7b83dkuUo6ihBe05WnyokE5qiojnM0SY-gQguiAE7SZ5LB1FgiCVEJ2WcpalVJWzoBKELhihndh90qSDmX2An_ADYF3gAyLDh9UPJzzt9k8c-F4OxBI6WnEsP1GqpHVngZQ
+
+- Prometheus+grafana
+	# rdate -s time.bora.net: 시간 동기화- 모든 노드에 적용
+	# kubectl create namespace monitoring: 그룹추가
+	# kubectl get ns: namespace 조회
+	yaml 파일 만드고 
+	# kubectl create -f [경로/파일명] : yaml 파일마다 해주기
+
+	port
+	30003 prometheus
+	30004 grafana
+	
+- GKE( google kubernetes engine) - GCP 기반
+
+	- gcp 기반으로 kubernetes를 구축하면 master vm을 따로 생성안하고 cluster에서 자동으로 잡아줌.
+		그래서 node vm을 만들어주지 않아도됨.
+		
+	- GCP 기반의 GKE 구축
+		1) GCP 가입
+		2) GCP project 생성 후 project에서 GKE 구성
+		3) GKE 설정 및 GKE 생성
+		4) plugin 설치(dashboard)
+		5) dashboard 접근
+		
+	- GCP dashboard token:
+		https://localhost:8080/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy
+	
+- taint가 디폴트로 걸려있기 때문에 master에는 pod가 올라가지 않음. taint를 빼면 올라갈 수 있음.
+	# kubectl describe nodes | grep -i taint
+
+- kubernetes components(pod 생성과정 동작방식)_그림참고 (architecture.png, arch_seq_diagram.png)
+	- Scheduler:  사용자가 요청했을 때 어느 node에 pod를 붙일 것인지 결정. 효율성(matric 기준)이 낮은 곳에 pod를 붙임(binding)
+	- 순서:
+		1) 사용자 요청을 받는다. (kubectl apply -f *.yaml 명령어 입력)
+		2) API Server가 무조건 받는다.
+		3) API Server는 DB(etcd)에 기록한다.
+		4) etcd는 기록이 완료되었다고 API Server에 전달함.
+		5) API Server는 pod배치할 node를 정해달라고 Scheduler로 요청함.
+		6) Scheduler는 효율성을 따져서 배치할 node를 선택한다.
+		7) Scheduler는 선택한 node를 API Server로 회신한다.
+		8) API Server는 선택된 노드의 Kubelet으로 전달한다.
+		9) Kubelet은 해당 노드의 Container Runtime 으로 전송한다. 즉 docker run이 실행됨.
+		10) Kubelet은 그 pod를 뒤집어 씌어서 pod 생성을 완료한다.
+		11) Kubelet은 성공적으로 완성하면 API Server로 회신한다.
+		12) API Server는 etcd에 상태정보(success, fail 등)를 기록한다.
+
+	- Master nod: 클러스터에 있는 노드들과 통신하여 desire state를 유지하기 위한 제어를 수행한다.
+		- desire state: 만약 ReplicaSet controller 에 replicas = 3 개로 설정하고 pod가 3개가 존재한다.
+			근데 3번째 pod가 장애가 나면 3개를 유지해야하기 때문에 pod를 한개 더 생성함.
+		- 주요 구성요소:
+					-> etcd: k8s의 db(json 구조). 상황/상태 기록
+						유지관리 - snapshot save|restore [snapshot 경로]
+					-> apiserver: 전체 클러스터 관리
+					-> scheduler
+					-> controller: multi-pod
+						workload resource: Deployment, ReplicaSet(RS=RC), DaemonSet, Job, CronJob
+					-> kubelet: 노드 간 통신
+					-> kube-proxy: 클러스트 내의 pod network 지원
+	- Worker node: workload를 수행하기 위한 object resource를 생성/운영하는 노드
+		-주요 구성요소:
+					-> kubelet
+					-> kube-proxy: 모든 요청(트래픽)에 대한 포워딩
+						vs. docker-proxy: NAT, NAPT
+					
+	- kube-proxy: pod 내에서의 클러스터 통신담당
+		kubelet ~ Container Runtime(Docker)까지 node. node에 kube-proxy 존재.
+		10번에서 pod 생성이 완료되면 그 때부터 kube-proxy가 통신을 하는 것.
+		
+# kubectl {apply | create | delete | get | describe} -f *.yaml: pod 생성
+	- apply: 생성후 update 가능
+	- create : 생성만
+	- delete : pod 정상종료  (# kubectl delete -f *.yaml --grace-period=0 --force : 강제종료)
+	- get: 기본조회
+	- describe: 세부조회
+
+[실습] <node-app 폴더>
+	app.js 라는 서비스를 pod생성해서 실행시킬거임
+
+	# kubectl get pod -o wide (--show-labels): 어떤 노드로 배치되어있는지 ip가 뭔지 자세히 알 수 있음.
+
+	- 순서
+	app.js: application service source
+	Dockerfile: 이미지 제작
+	mynode2-pod.yaml: pod 생성
+	mynode2-svc.yaml: pod 생성
+	yaml file apply명령
+	
+	# kubectl get pod,svc -o wide --show-labels: 잘 올라갔는지 확인
+		CLUSTER-IP 는 내부에서만 접속가능
+		EXTERNAL-IP 는 내,외부에서 접속가능
+
+	mynode2-pod.yaml 만 pod 생성 시 scheduler가 자동으로 node vm에 배치해준다.
+	node vm이나 master node에서는 배치된 node vm의 ip로 접속하여 서비스를 돌릴 수 있지만, 외부에서는 접근되지 않는다.
+	그래서 mynode2-svc.yaml 로 pod 생성해서 서비스를 연결시켜주면 외부에서도 접속이 가능하다.
+		
+	- 위처럼 yaml 파일을 2개 생성해서 apply 명령어를 두번쳤지만 하나의 파일로 여러 pod를 생성할 수 있다. mynode.yaml 가 예시.
+		apiVersion: v1
+		kind: Pod
+		metadata: 
+		  name: mynode2-pod
+		  labels:
+			app: mynode
+		spec:
+		  containers:
+		  - image: leehorim/mynode:2.0
+			name: mynode-containers
+			ports:
+			- containerPort: 8000
+		---
+		apiVersion: v1
+		kind: Service
+		metadata: 
+		  name: mynode2-svc
+		spec:
+		  selector:
+			app: mynode
+		  ports:
+		  - port: 9000
+			targetPort: 8000
+			protocol: TCP
+		  type: LoadBalancer (GCP 가 아닐 때는  externalIPs:  - 192.168.56.101)
+		
+		맨 마지막줄에 externalIPs key로 외부IP를 직접지정했다.
+		근데 위처럼 자동으로 줄 수 있는데 제한사항이 존재함.
+			centos 내부에서 명령어를 내리면 에러가 생김. 구글같은 클라우드 레벨에서만 가능하다. 이 뜻은 GCP를 이용해야함.
+
+- deployment: pod의 상위개념 <my-deploy 폴더>
+	replicas 는 당연 가지고 있고, 여기에 rolling update, rollout 존재(pod 무중단으로 update 등이 가능함).
+
+	# kubectl api-resources | grep -i deployment: 에서 apps/v1 확인
+	# kubectl create namespace my-ns1: namespace 생성
+	# vi my-deploy.yaml
+		apiVersion: apps/v1
+		kind: Deployment
+		metadata: 
+		  name: my-deploy
+		  namespace: my-ns1
+		  labels:
+			run: my-app
+		spec:
+		  replicas: 3
+		  selector:
+			matchLabels:
+			  run: my-app
+		  template:
+			metadata:
+			  labels:
+				run: my-app
+			spec:
+			  containers:
+			  - image: nginx:1.21
+				name: my-nginx-containers
+				ports:
+				- containerPort: 80
+		---
+		apiVersion: v1
+		kind: Service
+		metadata: 
+		  name: my-svc
+		  namespace: my-ns1
+		spec:
+		  selector:
+			run: my-app
+		  ports:
+		  - port: 8001
+			targetPort: 80
+			protocol: TCP
+		
+	# kubectl apply -f my-deploy.yaml
+	# kubectl get -n my-ns1 deploy,svc,po -o wide: namespace가 잡혀있으니 -n 옵션 걸어주기
+	# kubectl delete -n my-ns1 [NAME]: pod 하나 종료
+	
+	결론)
+	다시 kubectl get 으로 조회해보면 삭제된 pod는 나오지 않고 새로운 NAME의 pod가 생성되어 조회된다.
+	결국 하나를 삭제해도 3개가 유지되도록하는 deploy
+	
+* Day 3
