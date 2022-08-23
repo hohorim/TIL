@@ -1,0 +1,84 @@
+//package bim.service.project.controller;
+//
+//
+//import com.rabbitmq.client.Channel;
+//import com.rabbitmq.client.Connection;
+//import com.rabbitmq.client.ConnectionFactory;
+//
+//public class Send {
+//	
+//	private final static String QUEUE_NAME = "hello";
+//	private final static String topic = "resultKey";
+//	
+//	public static void main(String[] argv) throws Exception{
+//		
+//		ConnectionFactory factory = new ConnectionFactory();		
+//		factory.setHost("localhost");
+//		factory.setPort(15672);
+//		factory.setUsername("root");
+//		factory.setPassword("root");
+//		
+//		try (Connection con = factory.newConnection();Channel channel = con.createChannel()){ 	
+//				// Connection: Application과 RabbitMq Broker사이의  TCP 연결
+//				// Channel: connection 내부에 정의된 가상의 연결. queue에서 데이터를 손볼 때 생기는 일종의 통로같은 개념
+//			
+//			channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+//			
+//			String message = "HELLO WORLD";
+//			
+//			channel.basicPublish("", QUEUE_NAME, null, message.getBytes());
+//			
+//			System.out.println("[x]'" + message + "'");
+//		}
+//				
+//	}
+//
+//}
+
+rabbitmq
+
+
+
+//package bim.service.project.controller;
+//
+//import org.springframework.amqp.rabbit.annotation.RabbitListener;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.stereotype.Component;
+//
+//import com.fasterxml.jackson.core.JsonProcessingException;
+//import com.fasterxml.jackson.databind.JsonMappingException;
+//import com.fasterxml.jackson.databind.ObjectMapper;
+//
+//import bim.service.project.viewmodel.TeamUserConsumerViewModel;
+//
+//@Component
+//public class Receive {
+//	
+//	@Autowired
+//	ObjectMapper objectMapper;
+//	
+//	@RabbitListener(queues="test.queue")
+//	public void receiveMessage(String message) throws JsonMappingException, JsonProcessingException {
+//		
+//		TeamUserConsumerViewModel result = objectMapper.readValue(message, TeamUserConsumerViewModel.class);
+//	}
+//}
+
+// 연구일지에 쓸 rabbitMQ consumer
+
+
+
+
+
+
+
+	@PersistenceUnit
+    EntityManagerFactory factory;
+		
+	EntityManager em = factory.createEntityManager();
+	em.getTransaction().begin();
+	//em.flush(); 변경된 entity 감지된 거 전부 일괄 update
+	em.getTransaction().commit(); (flush() 먼저 발생한 후 commit 됨)
+	em.close();
+	
+연구일지 ㄱ

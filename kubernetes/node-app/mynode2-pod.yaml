@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: mynode2-pod
+  labels:
+    app: mynode
+spec:
+  containers:
+  - image: leehorim/mynode:2.0
+    name: mynode-containers
+    ports:
+    - containerPort: 8000
+    env: # mysql 처럼 환경변수가 붙어야한다면
+    - name: MYSQL_ROOT_PASSWORD
+      value: k8spass#
