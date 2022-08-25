@@ -283,9 +283,12 @@ Kubernetes 강의교육
 		10번에서 pod 생성이 완료되면 그 때부터 kube-proxy가 통신을 하는 것.
 		
 # kubectl {apply | create | delete | get | describe} -f *.yaml: pod 생성
+	- 파일명이 아닌 NAME 이름으로도 가능 
+		# kubectl get deploy,po,svc 해서 나온 NAME 값
+		# kubectl delete [pod | svc | deploy] [NAME]
 	- apply: 생성후 update 가능
 	- create : 생성만
-	- delete : pod 정상종료  (# kubectl delete -f *.yaml --grace-period=0 --force : 강제종료)
+	- delete : pod 정상종료  (# kubectl delete -f *.yaml --grace-period=0 --force : 강제종료, 비정상종료)
 	- get: 기본조회
 	- describe: 세부조회
 
@@ -304,6 +307,7 @@ Kubernetes 강의교육
 	# kubectl get pod,svc -o wide --show-labels: 잘 올라갔는지 확인
 		CLUSTER-IP 는 내부에서만 접속가능
 		EXTERNAL-IP 는 내,외부에서 접속가능
+	# kubectl get pod -o wide -l app: label에서 key가 app이라는 pod만 조회
 
 	mynode2-pod.yaml 만 pod 생성 시 scheduler가 자동으로 node vm에 배치해준다.
 	node vm이나 master node에서는 배치된 node vm의 ip로 접속하여 서비스를 돌릴 수 있지만, 외부에서는 접근되지 않는다.
@@ -384,10 +388,166 @@ Kubernetes 강의교육
 		
 	# kubectl apply -f my-deploy.yaml
 	# kubectl get -n my-ns1 deploy,svc,po -o wide: namespace가 잡혀있으니 -n 옵션 걸어주기
-	# kubectl delete -n my-ns1 [NAME]: pod 하나 종료
+	# kubectl delete -f my-ns1 [NAME]: pod 하나 종료
 	
 	결론)
 	다시 kubectl get 으로 조회해보면 삭제된 pod는 나오지 않고 새로운 NAME의 pod가 생성되어 조회된다.
 	결국 하나를 삭제해도 3개가 유지되도록하는 deploy
 	
 * Day 3
+
+- Pod: k8s 최소 application 배포 단위. container를 담는 그릇(=host)
+	- container 종류:
+		1) runtime container 
+		2) init container -> pod 기동시점에 우선 처리되야 하는 조건 container. 
+						  -> 내부,외부 조건이 부합되면 같이 있는 container를 처리하고 terminated(삭제가됨)
+		3) SideCar container -> 로그 수집, 모니터링과 같은 보조적 역할을 하는 container
+		
+	- 초기 pod 가 생성 될 때 Pod를 만드는 pause(=infra) container를 먼저 생성: 
+		network 기능(PodIP, Mac, ..) 배포 즉, network namespace 
+		-> 한 pod의 two container는 통신은 localhost:port 로.
+			apiVersion: v1
+			kind: Pod
+			metadata:
+			  name: mynode2-pod
+			  labels:
+				app: mynode
+			spec:
+			  containers:
+			  - image: leehorim/mynode:2.0
+				name: mynode-containers
+				ports:
+				- containerPort: 8000
+			  - image: leehorim/mynode:2.0
+				name: mynode-containers2
+				ports:
+				- containerPort: 9000
+	- Pod network namespace: Linux network stack을 가상화한 것.
+	  격리형 공간을 생성하고 network 기능 배포
+	  routing table
+	
+[multi pod container 에서 container 간 통신 - 동일 node에서 pod 간의 통신]
+	yaml 파일을 위처럼 컨테이너 2개를 작성해서 대쉬보드 uri > 상단 + 버튼에서 직접 업로드 
+	대쉬보드에 kubectl이 내장되어 있어서 바로 pod 생성이 가능하고, 2개의 컨테이너 내부로 들어가는 cli 입력창도 가능하다.
+		apiVersion: v1
+		kind: Pod
+		metadata:
+		  name: multi-pod
+		spec:
+		  containers:
+		  - image: dbgurum/k8s-lab:p8000
+			name: one-containers
+			ports:
+
+			- containerPort: 8000
+		  - image: dbgurum/k8s-lab:p8080
+			name: two-containers
+			ports:
+			- containerPort: 8080
+	
+파드
+	- 복수의 컨테이너 포트들은 중복되면 안됨.
+	
+	-대쉬보드가 아닌 ssh에서의 명령어:
+	  # kubectl get po: 대쉬보드로 올린 pod 조회
+	  # kubectl exec multi-pod -c one-container -- curl localhost:8080 
+		컨테이너가 2개 이상일 때는 -c 옵션을 붙여야 터미널 접속이 가능
+	  # kubectl get po -o wide: IP 도 같이 조회되는데 이는 PodIP. localhost와 같다.
+
+- 다른 node 간 pod 통신: calico 를 통해 통신. 
+
+- Label: pod | Deployment와 service를 연결
+	1) 식별
+	2) 그룹(집합) 구성
+	3) key:value 구조, 하나 이상 설정 가능->선택
+	
+	- label과 유사한 Annotations: 추가적인 데이터 저장 방법, 식별 방법 등 제공, 스케쥴링(node 지정)..
+	
+	[label 실습]
+		1. namespace crate
+		2. service 생성
+		3. pod 3개
+		4. pod 당 다수의 container
+	
+		label 폴더의 label-1.yaml 참고
+		
+	[3번 label 실습]
+		label-choice 폴더의 label-2.yaml 참고
+		
+		label 은 key: value 형식으로 여러개 설정가능하다.
+		service를 여러개 구현해서 label에 맞는 서비스를 선택해서 pod를 생성한다.
+		
+- node schedule
+	- kube-scheduler-k8s-master 사용중
+	- pod를 생성하면 scheduler에 의해 노드에 할당- 각 노드의 metric(resource usage: cpu, memory) 정보를 추적
+	- 기본값은 자동으로 할당해줌
+	- 수동할당: spec.nodeSelector, spec.nodeName 를 yaml 파일에 넣어주면됨.
+		schedule 폴더의 nodesel-pod1.yaml 참고
+		nodeSelector value를 master node로 지정하면 에러(pending)남. taint 때문에.
+		만약 master node에도 지정하고 싶다면 yaml의 spec.tolerations 를 지정하면 가능하다.
+		
+		1) nodeSelector: 
+			# kubectl describe no k8s-node1 에서 조회된 값 "kubernetes.io/hostname=k8s-node1" 입력
+		2) nodeName:
+			"k8s-node1" 입력. 권장하지 않음
+		3) node label: 현재 보유한 노드 수가 많을 때 특징을 기재하는 것.
+			ex. 어떤노드(gpu), 어떤노드(ssh), 어떤노드(특징기재)
+			# kubectl label node k8s-node1 disktype=ssd: 라벨을 건다.
+				spec.nodeSelector: 
+				  disktype: ssd 
+				처럼 yaml 파일 짜면 된다.
+			
+- namespace
+	# kubectl config set-context --current --namespace=[NAMESPACE]: namespace 기본값 변경
+	# kubectl config view: 현재 namespace 조회
+	
+	- vi kubens 실행파일로 간단하게 namespace를 변경 조회할 수 있음(namespace 폴더의 kubens 파일)
+		# vi kubens
+		# chmod 744 kubens
+		# ./kubens: 모든 namespace 와 현재 namespace 출력
+		# ./kubens [NAMESPACE]: namespace 변경
+		# ./kubens -: default 변경
+	
+- kompose: docker-compose.yml 과 k8s.yaml을 호환가능하게 하는 도구(convert).	
+	
+	kompose 폴더의 docker-compose.yml 파일 참고
+	
+	-docker-compose install
+	# curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+	# chmod +x /usr/local/bin/docker-compose
+	# ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+	# vi docker-compose.yml
+	# curl -L http://github.com/kubernetes/kompose/releases/download/v1.22.0/kompose-linux-adm64 -o kompose
+	# chmod +x kompose
+	# echo $PATH
+	# mv kompose /usr/local/bin/kompose
+
+	# kompose convert: compose.yml 파일을 자동으로 kompose.ymal 파일로 변환됨
+	# kubectl apply -f [파일들]: 파일 한번에 쓸 때는 콤마(,)로 구분하고 띄어쓰기 없이
+
+- Service: Pod에 연결성을 부여. label로 연결
+	- type:
+		1) ClusterIP: 내부용
+		2) NodePort: 외부용. L4, 30000~32767 port pool(random할당, 지정가능)
+		3) LoadBalancer: 외부용, IP할당(ExternalIP) -> cloud(GKE)에서 public IP 할당
+			-> CentOs에서는 MetalLB(bearMetal LB) 구축하면 가능
+		4) Ingress: 외부용. L7(http, https)
+		5) NetworkPolicy: 송신(egress),수신(inress) 정책 구현
+	
+	- why needs? 장애 시 application 코드 수정을 매번 해야하는 부담을 없앨 수 있다.
+	- Service 구조?
+		1) Pod, Service를 label로 연결 생성 -> 이름/IP가 kube-dns에 자동으로 등록
+		   연결이 된 후, 트래픽 요청이 들어오면 apiserver에 등록. apiserver는 kube-proxy랑 연결됨
+		2) 요청 -> Service -> Pod -> container -> app
+						  ㄴNAT(IP변환)
+		3) 다른 노드의 pod 간 통신: calico
+		4) Service 삭제 시 자동으로 apiserver, kube-dns에서도 삭제됨.
+		
+		
+	[ClusterIP 실습]
+	cluster 폴더의 clusterip-1.yaml 참고
+	pod, service 생성 실행 후
+	# kubectl get svc clusterip-svc -o yaml: 
+		internalTrafficPolicy: Cluster 를 볼수 있는데 이게 여러개의 pod 연결할 때 load balancing 정책임.
+		
