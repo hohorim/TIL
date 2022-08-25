@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: weblog-pod2
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: k8s-node2
+  volumes:
+  - name: host-path
+    hostPath:
+      path: /data_dir/web-log
+      type: DirectoryOrCreate # 없으면 만들어라. OS level이기 때문에 필요함
+  containers:
+  - image: nginx:1.21
+    name: nginx-web
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: host-path
+      mountPath: /var/log/nginx
