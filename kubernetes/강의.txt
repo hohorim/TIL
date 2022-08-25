@@ -31,6 +31,10 @@ Kubernetes 강의교육
 	- vm 네트워크:
 		어댑터1 NAT 는 외부네트워크 (external)
 		어댑터2 호스트 전용어댑터 는 호스트 전용(internal)->infral
+	master node: 192.168.56.100
+	node1: 192.168.56.101
+	node2: 192.168.56.102
+	node3: 192.168.56.103
 
 - kubernetes 구축 
   1. vm 설치
@@ -527,7 +531,7 @@ Kubernetes 강의교육
 	# kubectl apply -f [파일들]: 파일 한번에 쓸 때는 콤마(,)로 구분하고 띄어쓰기 없이
 
 - Service: Pod에 연결성을 부여. label로 연결
-	- type:
+	- spec.type:
 		1) ClusterIP: 내부용
 		2) NodePort: 외부용. L4, 30000~32767 port pool(random할당, 지정가능)
 		3) LoadBalancer: 외부용, IP할당(ExternalIP) -> cloud(GKE)에서 public IP 할당
@@ -545,9 +549,227 @@ Kubernetes 강의교육
 		4) Service 삭제 시 자동으로 apiserver, kube-dns에서도 삭제됨.
 		
 		
-	[ClusterIP 실습]
-	cluster 폴더의 clusterip-1.yaml 참고
-	pod, service 생성 실행 후
-	# kubectl get svc clusterip-svc -o yaml: 
-		internalTrafficPolicy: Cluster 를 볼수 있는데 이게 여러개의 pod 연결할 때 load balancing 정책임.
+	- ClusterIP
+		[ClusterIP 실습]
+		cluster 폴더의 clusterip-1.yaml 참고
+		pod, service 생성 실행 후
+		# kubectl get svc clusterip-svc -o yaml: 
+			internalTrafficPolicy: Cluster 를 볼수 있는데 이게 여러개의 pod 연결할 때 load balancing 정책임.
 		
+	- NodePort: 외부에서 접근가능한 Port 할당
+		yaml 파일 생성시 spec.type을 NodePort로 지정하면 pool 에서 랜덤으로 할당됨. 모든 노드의 해당 포트가 open이 됨
+		만약 지정하고 싶다면 spec.ports.nodePort로 지정.
+		# netstat -nlp | grep [port번호]: 열린 포트 확인(각 노드에 명령어 쳐보면 다 열려있음)
+
+			apiVersion: v1
+			kind: Pod
+			metadata:
+			  name: pod-a
+			  labels:
+				app: mynode
+			spec:
+			  containers:
+			  - image: dbgurum/k8s-lab:v1.0
+				name: pod-c-containers
+				ports:
+				- containerPort: 8000
+			---
+			apiVersion: v1
+			kind: Service
+			metadata:
+			  name: svc
+			spec:
+			  type: NodePort
+			  selector:
+				app: mynode
+			  ports:
+			  - port: 8001				# service
+				targetPort: 8000		# container
+				nodePort: 30001			# OS, nodePort 를 지정하지 않으면 랜덤으로 지정됨.
+		
+		- 외부에서 내부로 접근하는 포트 순서: 30001 -> 8001 -> 8000
+		- 모든 노드 IP에서 접근이 가능하고, 외부에서도 마찬가지로 접근가능.
+		- 트래픽 분산 효과: pod2개에 서비스1를 연결해서 nodePort를 지정해주면 트래픽요청이 분산되어 pod에 접근한다.
+					즉, 192.168.56.101:30001 로 접속하게 되면 pod 2개 중 효율적인 pod 로 트래픽이 요청된다.
+	
+		# kubectl edit svc [service명]: externalTrafficPolicy, internalTrafficPolicy 가 Cluster로 되있는 걸 확인 할 수 있다.
+				externalTrafficPolicy, internalTrafficPolicy 를 Local 로 바꾼다면
+				트래픽이 분산되어 나가지 않는다.
+		
+	- LoadBalancer: 외부에서 접근가능한 IP 할당
+		- GCP 로 실습
+			** # kubectl api-resource: 하면 만들려는 파드나 서비스등의 apiVersion, kind 를 알 수 있다.
+			apiVersion: v1
+			kind: Pod
+			metadata:
+			  name: pod-lb
+			  labels:
+				run: lbapp
+			spec:
+			  containers:
+			  - image: dbgurum/k8s-lab:v1.0
+				name: lb-containers
+				ports:
+				- containerPort: 8000
+			---
+			apiVersion: v1
+			kind: Service
+			metadata:
+			  name: my-svc
+			spec:
+			  type: LoadBalancer
+			  selector:
+				run: lbapp
+			  ports:
+			  - port: 9090		
+				targetPort: 8080
+	
+		- 실습 2: deploy lb
+			lb-deploy 폴더의 deploy-app.yaml 참고
+			
+	- Ingress: http, https 연결.
+		- 사진 ingress.png
+		- routing rule: cluster에 진입점. 어떤 서비스를 타서 어떤 pod로 가라는 경로 배정
+
+		[실습]
+		서비스 3개에 각 서비스 마다 pod 1대. 서비스yaml에 노드포를 지정하는 게 아닌 ingress controller에서 자동으로 부여해줌
+		ingress 폴더의 webapp.yaml, webapp-ing.yaml 참고
+		
+		https://kubernetes.github.io/ingress-nginx/deploy/#bare-metal-clusters 에서 베어메탈
+		# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.0/deploy/static/provider/baremetal/deploy.yaml
+		# kubectl get po --all-namespaces
+			ingress-nginx          ingress-nginx-admission-create-6jmrh         0/1     Completed   0                   64s
+			ingress-nginx          ingress-nginx-admission-patch-hxzqj          0/1     Completed   2                   64s
+			ingress-nginx          ingress-nginx-controller-77cb5dbf4d-bndks    1/1     Running     0                   64s
+	
+		ingress 는 label이 아닌 annotation 을 사용
+		
+		webapp.yaml, webapp-ing.yaml apply 후
+			-> webapp-ing.yaml 을 apply 할 경우 에러가날거임(ingress 가 update<v23>되고 발생한 오류임)
+			-> # kubectl delete validatingwebhookconfiguration ingress-nginx-admission: 인증과 관련된 ingress 설정 제거
+		
+		# kubectl get ing,pod,svc -o wide: 어떤 노드에 붙었는지 IP 확인
+
+		# kubewctl get pod --all-namespaces: NAMESPACE 확인(ingress-nginx)
+		# kubectl get ing,pod,svc -o wide -n [NAMESPACE]: 포트 확인후 접속. NAMESPACE=ingress-nginx
+		
+		# curl [IP]:[PORT]/[PATH]
+		
+* Day 4
+
+- docker volume:
+	- container의 생명주기와 같다. container가 생성/삭제되면 생성/삭제된다.
+	- bind mount: 절대경로
+	- volume: /var/lib/docker/volume
+	- tmpfs: 임시 메모리공간
+	
+- kubernetes volume:
+	- Pod 생명주기와 같다. Pod가 생성/삭제되면 생성/삭제된다.
+	- pod 안에 볼륨이 생성된다.
+	- 그 볼륨은 컨테이너와 mount 된다.
+	- pod 당 볼륨 갯수는 제한이 없다.
+	- 하나의 볼륨으로 여러 컨테이너가 공유할 수 있다.
+	- 컨테이너마다 독립적인 볼륨을 가질 수 있다.
+	- 하나의 컨테이너는 공유볼륨과 독립볼륨을 동시에 가질 수 있다.
+	
+	- spec.volumes.type
+		1) emptyDir: pod내의 container 간의 공유 볼륨 mount-> sidecar container
+			ㄴ non-persistent volumne(지속적이지 않음)
+		2) hostPath: pod to host. 상호간의 데이터 교류.
+			즉, pod 내의 볼륨과 pod 밖의 host경로를 mount. pod가 망가져도 데이터는 존재함.
+		3) NFS: 노드끼리 host 경로를 mount해줌. node가 망가져도 데이터 존재함.
+		4) PV(admin) & PVC(developer): OS 의존성 x
+			persistent volume & persistent volume claims
+		(2),(3) 은 의존성이 너무 강해서 잘안씀
+		
+		[emptyDir 실습]-공유볼륨
+		pod 내의 공유되는 볼륨은 추상적이다. 사실상 컨테이너끼리 mount되는 느낌이랑 비슷.
+		
+		vol-test 폴더의 vol-1-empty.yaml 참고
+		
+		# kubectl exec -it pod-vol-1 -c container1 --bash:
+			내부들어가서 volume dir 존재확인하고 container2도 확인해서, 서로 연결되어있는지 파일생성해서 확인해보기
+		# kubectl cp [pod명]:[mountPath]/[만들파일이름] -c [컨테이너명] [경로/파일이름]: 컨테이너1에 있는 볼륨의 파일 복사해서 가져오기
+		# kubectl cp [경로/파일이름] [pod명]:[mountPath]/[만들파일이름] -c [컨테이너명]: 현재 파일을 컨테이너1에 있는 볼륨폴더에 집어넣기
+		
+		[sidecar 실습]
+		특정 pod의 log 수집이나 monitoring 하는 기술
+		
+		vol-test 폴더의 vol-2-sidecar.yaml 참고
+		
+		확인작업
+		# kubectl exec -it log-pod -c html-container -- /bin/cat /usr/share/nginx/html/index.html
+		# kubectl exec -it log-pod -c sidecar-container -- /bin/cat /html-log/index.html
+		
+		[hostPath 실습]
+		node1과 컨테이너 간 mount
+		
+		vol-test 폴더의 vol-3-hostPath.yaml 참고
+		
+		# kubectl exec -it pod-vol-2 -- bash
+		
+		[hostPath + NFS]
+		GCP 사용
+		vol-test 폴더의 weblog-pod2.yaml, mysql-pod.yaml 참고
+		
+		- PV, PVC:
+			- PV: 클러스터에 볼륨으로서 추가되는 가상 스토리지 인스턴스
+			- PVC: 특정 유형과 구성으로 지속적 스토리지를 프로비저닝(미리 만들어놓는다.)하는 요청
+			
+			- 대략적인 흐름
+				1) admin 은 미리 PV를 만들어놓는다.(프로비저닝)
+				2) developer 는 권한과 용량에 해당하는 PVC 를 생성한다.
+				3) PVC의 권한과 용량이 매칭되는 PV를 자동으로 bind 된다.
+				4) developer 는 매칭된 pvc를 확인하고 pvc를 이용해서 pod를 만든다.
+			
+			[실습]
+			pv-pvc 폴더안의 pv1.yaml, pvc1.yaml, pod1.yaml 참고
+			
+			pv에는 3개, pvc는 4개를 만듬
+			apply 하고 # kubectl get pv,pvc 했을 때 나오는 결과는
+			pvc3번만 Pending이 됨. 이유는 용량과 권한에 해당하는 pv가 없어 bind 되지 않았기 때문임.
+			# kubectl get pv,pvc -o wide: 누가 어디에 붙어있는지 자세히 보기
+						
+
+			pod1.yaml 에서 persistentVolumeClaim.claimName 으로 pvc 선택해서 apply
+			
+			확인
+			# kubectl exec -it mynode-pod -- bash
+			
+			결론: node(host)와 pod mount 시 의존성없이 가능
+
+			- spec.accessModes:
+				- ReadWriteOnce(RWO): 하나의 노드가 볼륨을 R/W 가능하도록 mount
+				- ReadOnlyMany(ROX): 여러 노드가 볼륨을 R/O 가능하도록 mount
+				- ReadWriteMany(RWX): 여러 노드가 볼륨을 R/W 가능하도록 mount
+				
+				복수개가 적용될 수 있기 때문에 yaml 파일 만들 때 dash(-) 가 붙음
+				
+			- spec.persistentVolumeReclaimPolicy: pv의 공간을 회수하는 정책
+				- Retain: 디폴트. 데이터 보존
+				- Recycle: 데이터 삭제 후 재사용
+				- Delete: 사용이 종료되면 해당 볼륨 삭제
+				
+			- spec.storageClassName:
+				- 동적 볼륨
+			
+			- pvc 가 pv를 매칭할 때 자동이 아닌 수동으로 하는 법:
+				- pv를 생성할 때 pv에 라벨이름을 부여한다.
+					metadata.labels.name: pv4	(name은 label 처럼 type 이런거로 변경해도됨. pod 라벨이름 쓸 경우와만 맞추면됨)
+				- pvc를 생성할 때 pv의 라벨이름을 적용한다.
+					spec.selector.matchLabels.name: pv4
+			
+			[예제실습]
+			- pv가 매칭되어 pvc를 선택한 후 pod가 만들어진 상태에서 pv 용량변경가능.
+				pvc 도 가능하지만 제약사항이 많음.
+			pv-pvc 폴더안의 pv-pvc-pod.yaml 참고
+			
+			# kubectl edit pv [pv 명]: [pv 명]=pv-volume
+				spec.capacity.storage 변경저장. 변경작업 있으면 바로 반영됨
+			# kubectl get pv,pvc,pod -o wide: 확인
+			
+			[동적볼륨 실습]
+			GCP사용
+			pv-pvc 폴더의 gce-sclass.yaml 참고
+			
+			yaml 작성중 day4 1번동영상 02:14:57
