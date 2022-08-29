@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-cm-pod
+spec:
+  containers:
+  - image: redis:5
+    name: redis-container
+    volumeMounts:
+    - name: redis-volume
+      mountPath: /opt/redis-config
+  volumes:
+  - name: redis-volume
+    configMap:
+      name: redis-cm
+      
+    
