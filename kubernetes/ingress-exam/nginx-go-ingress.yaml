@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-goapp-ingress
+spec:
+  tls:
+  - hosts:
+    - nginx.k8s.com
+    - goapp.k8s.com
+    secretName: k8s-secret
+  rules:
+  - host: nginx.k8s.com
+    http:
+      paths:
+      - path: /     # tls 적용했기 때문에 / 가 두개로 가능
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-lb
+            port:
+              number: 80
+  - host: goapp.k8s.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: goapp-lb
+            port:
+              number: 80

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-pod2
+spec:
+  containers:
+  - image: nginx:1.21
+    name: cm-container2
+    volumeMounts:
+    - name: cm-volume
+      mountPath: /etc/config    # 여기로 configmap을 떨구겠다.
+  volumes:
+  - name: cm-volume
+    configMap:
+      name: log-level-cm
+    

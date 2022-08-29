@@ -26,6 +26,7 @@ Kubernetes 강의교육
 		worker node: pod(application workload) 생성
 
 	- centos 실행을 위해 windows 기능에서 가상머신플랫폼 체크해제해줌. (이것때문에 wsl 가상머신이 돌아가지 않음)
+		linux용 windows 하위 시스템 체크
 	- virtual box sms 6.0.4버전
 	- centos login: root/k8spass#
 	- vm 네트워크:
@@ -768,8 +769,143 @@ Kubernetes 강의교육
 				spec.capacity.storage 변경저장. 변경작업 있으면 바로 반영됨
 			# kubectl get pv,pvc,pod -o wide: 확인
 			
-			[동적볼륨 실습]
-			GCP사용
-			pv-pvc 폴더의 gce-sclass.yaml 참고
+		[동적볼륨 실습]
+		GCP사용
+		pv-pvc 폴더의 gce-sclass.yaml, gce-pvc-sclass.yaml 참고
+		
+		gce google shell 에서 apply 하기
+		google 디스크에 생성된걸 확인할 수 있다.
+		
+		# gcloud compute disks delete [디스크 이름] --zone [zone 이름]: 디스크영구 삭제
 			
-			yaml 작성중 day4 1번동영상 02:14:57
+- configmap & secret
+
+	- 환경변수 설정, CMD에 args 설정, 구성파일(환경변수 모음)
+	- key:value 구조
+	- pod(deployment) 내에 참조됨
+	- configmap 과 secret 차이점
+		- configmap -> 기밀하지 않은 데이터 저장. 
+		- secret -> 기밀한 데이터 저장. encoding(base64)으로 만듬. ex) MYSQL_ROOT_PASSWORD 
+	- 1 mega 용량 제한
+	- 구성파일(*.conf)
+	
+	[실습:proxy 역할로 구성변경하는 configmap 사용 방법]
+		case 1) configmap create 후 pod yaml 작성 시 configmap 적용 코드 추가해서 apply
+		# kubectl create configmap [cm 명] --from-literal=LOG_LEVEL=DEBUG: configmap 생성
+			- [cm 명] = log-level-cm
+			- cm == configmap
+			- cm 설정하는 옵션
+				--from-literal=[key=value] 또는 --from-literal [key=value]: 바로 create 하기
+				--from-file=[파일명]: 미리 생성된 key:value 파일로 create하기
+		# kubectl get cm
+		# kubectl get cm log-level-cm -o yaml: yaml 로 보기
+		# kubectl get cm log-level-cm -o yaml > [파일명.yaml]: yaml 로 떨구기
+			json파일로 떨구고 싶다면 yaml 을 json으로 바꿔서 명령어 입력
+		
+		cm-1 폴더의 cm-pod1.yaml 참고
+		
+		cm-pod1 으로 pod 하나 작성할 때 configmap 을 설정한다. apply 후
+		# kubectl exec cm-pod1 -- env: 잘 적용되어 있는지 확인
+	
+		case 2) 볼륨기법. 볼륨으로 mount해서 configmap을 파일로 떨구기
+		cm-1 폴더의 cm-pod2.yaml 참고
+		
+		# kubectl exec cm-pod2 -- cat /etc/config/[key]: mount 잘 되어있는지 확인
+			[key]=LOG_LEVEL. key는 configmap 생성시 작성한 key 값이다. 그럼 해당 key의 value값을 확인할 수 있다.
+			
+		case 3) 볼륨기법. *.conf 파일을 연동하는 방법
+		cm-1 폴더의 redis.conf, redis-cm-pod.yaml 참고
+		
+		# kubectl create cm redis-cm --from-file=redis.conf: cm 생성
+		redis-cm-pod.yaml 로 pod 생성 후
+		# kubectl exec redis-cm-pod -- ls /opt/redis-config: 확인
+
+	- cm의 yaml 파일을 자동으로 만들어주고 실행하는 방법
+		# kubectl create cm my-cm1 --from-literal=k8s-key=k8s-value --dry-run=client -o yaml: 실행된 것이 아닌 cm 설정파일을 yaml로 출력해줌.
+		# kubectl create cm my-cm1 --from-literal=k8s-key=k8s-value --dry-run=client -o yaml > my-cm1.yaml 하면 떨궈줌
+		# kubectl apply -f my-cm1.yaml
+		# kubectl get cm: 확인할 수 있음.
+		
+	
+	[실습: nginx를 proxy로 이용해서 통신, configmap]
+	시나리오: 외부에서 ngix 80번 포트를 타고 nginx에서는 flask 5000번 포트로 준다음 flask의 내용을 외부에서 볼 수 있도록.
+		nginx 80번 포트를 타기 위해 NodePort의 service를 생성해서 외부포트통신을 열어준다.
+		nginx는 웹서버가 아닌 proxy로 사용
+		
+	1. nginx.conf를 저장한 configmap 생성
+	2. multi-container pod
+		1) nginx (80)
+		2) webapp (flask (5000))
+	3) NodePort 를 이용한 외부 접근 
+	즉, 외부에서 30000(nodeport)번대 포트로 pod에 접근하고 pod의 nginx(80)로 들어온 다음 webapp(5000) 으로 들어오면 "hello world!" 출력
+
+	cm-1 폴더의 webapp-conf.yaml, webapp-pod.yaml, webapp-svc.yaml 참고
+
+	# kubectl get pod -o wide
+	# curl [webapp-pod 의 IP]: 되는지 확인
+
+	# kubectl get pod,svc,cm -o wide: 어느 노드에 붙었나 확인후 그 노드 IP로 외부에서 접속해보기
+		pod/webapp-pod   2/2     Running   0          5m34s   10.111.156.91   k8s-node1   <none>           <none>
+		service/frontend-svc   NodePort    10.96.4.251   <none>        80:31111/TCP   48s   app=webapp
+		configmap/nginx-conf         1      15m
+		
+		> 192.168.56.101:3111
+	
+	- secret 생성
+		# kubectl create secret generic my-pwd --from-literal=mypassword=k8spass#
+			generic 은 value를 인코딩해줌
+		# kubectl get secrets: 확인
+		# kubectl get secrets my-pwd -o yaml: 인코딩 된 값 확인
+	
+	- yaml 자동생성으로 secret 만들기
+		# kubectl create secret generic my-pwd2 --from-literal=mypassword=k8spass# --dry-run=client -o yaml > my-pwd2.yaml
+		# kubectl apply -f my-pwd2.yaml
+
+		
+	[실습: scret]
+	secret-1 폴더의 secret-pod1.yaml 참고
+	
+	apply 후
+	# kubectl exec secret-pod1 -- env: 자동으로 decode 되는걸 볼 수 있다.
+	
+	[configMap + secret 실습]
+		conf-sec 폴더의 cm-sec-pod.yaml 참고
+		
+		# kubectl create configmap cm-dev --from-literal SSH=false --from-literal=User=horim --dry-run=client -o yaml > cm-lab.yaml
+		# kubectl apply -f cm-lab.yaml
+		
+		# kubectl create secret generic sec-dev --from-literal=Key=YnJhdm9teWxpZmU= --dry-run=client -o yaml > sec-lab.yaml
+		# cat sec-lab.yaml: data.Key 를 YnJhdm9teWxpZmU= 이걸로 바꿔주자.
+		# kubectl apply -f sec-lab.yaml
+		
+		pod 생성하고
+		
+		# kubectl exec -it cm-sec-pod -- env: 디코딩된 Key확인
+		
+	[실습: ingress]
+	ingress-exam 폴더 참고
+	
+	1. deployment 생성: nginx-go-deployment.yaml 
+	2. service 생성: nginx-go-svc.yaml
+	3. secret 생성
+		# vi /etc/hosts: 노드마다  nginx.k8s.com   goapp.k8s.com 로 다중 host명 지정
+		# openssl genrsa -out server.key 2048
+		# openssl req -new -x509 -key server.key -out server.cert -days 360 -subj /CN=nginx.k8s.com,goapp.k8s.com
+		# kubectl create secret tls k8s-secret --cert=server.cert --key=server.key
+	4. ingress 생성: nginx-go-ingress.yaml
+		
+	# kubectl get deploy,po,svc,ing -o wide: 전부 되는지 확인
+	# curl goapp.k8s.com:[port 번호]
+	
+	* nginx 식별을 위해 index.html 수정 후 확인
+		각 노드로 들어가서 /usr/share/nginx/html/ 경로에 index.html 파일 넣기
+		# docker ps | grep nginx: container ID 얻기
+		# docker cp index.html [컨테이너ID]:/usr/share/nginx/html/
+		# curl goapp.k8s.com:[port 번호]: master node에서 확인
+
+	
+	
+	
+	
+	# curl nginx.k8s.com:[port 번호]
+	1:33:06

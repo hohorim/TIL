@@ -1,0 +1,8 @@
+apiVersion: storage.k8s.io/v1
+kind: storageclasses
+metadata:
+  name: fast
+provisioner: kubernetes.io/gce-pd   # physical disk 를 사용하겠다.
+parameters:
+  type: pd-ssd
+  zone: asia-northeast1-a           # gce 만들 때 생성한 나라
