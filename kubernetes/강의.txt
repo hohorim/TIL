@@ -486,7 +486,7 @@ Kubernetes 강의교육
 	- kube-scheduler-k8s-master 사용중
 	- pod를 생성하면 scheduler에 의해 노드에 할당- 각 노드의 metric(resource usage: cpu, memory) 정보를 추적
 	- 기본값은 자동으로 할당해줌
-	- 수동할당: spec.nodeSelector, spec.nodeName 를 yaml 파일에 넣어주면됨.
+	- 수동할당: spec.nodeSelector나 spec.nodeName 를 yaml 파일에 넣어주면됨.
 		schedule 폴더의 nodesel-pod1.yaml 참고
 		nodeSelector value를 master node로 지정하면 에러(pending)남. taint 때문에.
 		만약 master node에도 지정하고 싶다면 yaml의 spec.tolerations 를 지정하면 가능하다.
@@ -902,10 +902,5 @@ Kubernetes 강의교육
 		# docker ps | grep nginx: container ID 얻기
 		# docker cp index.html [컨테이너ID]:/usr/share/nginx/html/
 		# curl goapp.k8s.com:[port 번호]: master node에서 확인
-
-	
-	
-	
 	
 	# curl nginx.k8s.com:[port 번호]
-	1:33:06
