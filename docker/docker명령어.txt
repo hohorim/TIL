@@ -1,7 +1,7 @@
 
 # vi edt
 FROM adoptopenjdk/openjdk11
-ARG JAR_FILE= project-0.0.1-SNAPSHOT.jar
+ARG JAR_FILE=project-0.0.1-SNAPSHOT.jar
 COPY ${JAR_FILE} appProject.jar
 EXPOSE 8082
 ENTRYPOINT ["java","-jar","appProject.jar"]
