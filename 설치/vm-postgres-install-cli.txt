@@ -1,0 +1,74 @@
+ubuntu
+# apt-get install -y postgresql postgresql-contrib
+# psql --version
+# sudo service postgresql start
+# pg_lsclusters
+# sudo -i -u postgres
+
+centos <이거를 위주로 함
+# sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+# sudo yum install -y postgresql11-server postgresql11-contrib
+
+# rpm -qa | grep postgresql
+
+# sudo /usr/pgsql-11/bin/postgresql-11-setup initdb
+# sudo systemctl enable postgresql-11
+# sudo systemctl start postgresql-11
+# sudo -u postgres psql
+
+* postgresql이 start가 안될 경우 apt/yum update 해주기
+
+
+
+- 설치가 끝나면 postgres 라는 사용자계정이 자동으로 생성된다.
+# cat /etc/passwd: 사용자보기
+
+1. 일반사용자계정 생성
+# useradd [계정이름]: 루트 계정으로는 postgres shell에 접속하지 못해 일반사용자계정을 생성한다.
+# su [계정이름]: 계정으로 접속
+# su - : root 계정으로 접속
+# vi /var/lib/pgsql/11/data/pg_hba.conf:
+	
+	IPv4 local connections:
+	host    all             all             127.0.0.1/32            md5
+	host    all             all             0.0.0.0/0               md5
+	
+	IPv4 부분에 0.0.0.0/0 으로 모든 IP에서 접속가능하도록 설정. md5는 pw 입력하고 들어가도록 설정
+	
+2. 파일설정
+# vi /var/lib/pgsql/11/data/postgresql.conf:
+
+	listen_addresses = '*'          # what IP address(es) to listen on;
+											# comma-separated list of addresses;
+											# defaults to 'localhost'; use '*' for all
+											# (change requires restart)
+	port = 15432                            # (change requires restart)
+	unix_socket_directories = '/var/run/postgresql, /tmp'   # comma-separated list of directories
+
+	위 3개 주석 풀어주고, ip는 기본 5432 인데 이미 쓰던거여서 15432로 바꿈. listen_addresses 는 *로 변경.
+
+# netstat -nltp | grep 5432: 15432 포트열렸는지 listen 중인지, ip잘 들어갔는지 확인
+
+3. 방화벽설정
+# firewall-cmd --permanent --zone=public --add-port=15432/tcp: 방화벽 설정
+# firewall-cmd --reload
+# firewall-cmd --list-all: 방화벽 설정 잘되어있는지 확인
+
+# ps -el | grep postgres: 잘 실행중인지 확인
+
+4. postgres 실행
+# systemctl start/restart/stop/status postgresql-11: 실행. 확인
+	postgresql-11 부분은 버전에 따라 명령어가 다르다.
+
+5. postgres shell 접속
+# su postgres: postgres 사용자로 접속
+# psql -p 15432: postgres shell 접속
+
+# \l: database 조회
+# \du: user정보 조회
+# create database [database명]
+
+6. 외부에서 접속할 떄
+dbeaber 로 접속할 때 postgreesql driver:
+	상단의 데이터베이스 > 드라이버 관리자 > postgresql 선택 > edit > libraries 보면
+	org.postgresql:postgresql 버전을 42.2.14 로 update 해준다. 그게 아니면 에러난다고 함.
