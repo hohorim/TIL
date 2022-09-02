@@ -650,8 +650,8 @@ Kubernetes 강의교육
 			-> # kubectl delete validatingwebhookconfiguration ingress-nginx-admission: 인증과 관련된 ingress 설정 제거
 		
 		# kubectl get ing,pod,svc -o wide: 어떤 노드에 붙었는지 IP 확인
+		# kubectl get pod --all-namespaces: NAMESPACE 확인(ingress-nginx)
 
-		# kubewctl get pod --all-namespaces: NAMESPACE 확인(ingress-nginx)
 		# kubectl get ing,pod,svc -o wide -n [NAMESPACE]: 포트 확인후 접속. NAMESPACE=ingress-nginx
 		
 		# curl [IP]:[PORT]/[PATH]
