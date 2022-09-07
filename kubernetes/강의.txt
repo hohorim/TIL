@@ -26,7 +26,7 @@ Kubernetes 강의교육
 		worker node: pod(application workload) 생성
 
 	- centos 실행을 위해 windows 기능에서 가상머신플랫폼 체크해제해줌. (이것때문에 wsl 가상머신이 돌아가지 않음)
-		linux용 windows 하위 시스템 체크
+		linux용 windows 하위 시스템 체크(wsl도 가상머신도_virtualbox 체크해야됨)
 	- virtual box sms 6.0.4버전
 	- centos login: root/k8spass#
 	- vm 네트워크:
@@ -393,7 +393,7 @@ Kubernetes 강의교육
 		
 	# kubectl apply -f my-deploy.yaml
 	# kubectl get -n my-ns1 deploy,svc,po -o wide: namespace가 잡혀있으니 -n 옵션 걸어주기
-	# kubectl delete -f my-ns1 [NAME]: pod 하나 종료
+	# kubectl delete -n [namespace명] [pod NAME]: pod 하나 종료
 	
 	결론)
 	다시 kubectl get 으로 조회해보면 삭제된 pod는 나오지 않고 새로운 NAME의 pod가 생성되어 조회된다.
@@ -904,3 +904,4 @@ Kubernetes 강의교육
 		# curl goapp.k8s.com:[port 번호]: master node에서 확인
 	
 	# curl nginx.k8s.com:[port 번호]
+
