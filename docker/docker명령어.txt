@@ -26,6 +26,7 @@ ENTRYPOINT ["java","-jar","appProject.jar"]
 # docker images
 -> 빌드된 이미지 보기
 
+# docker run -d --rm --name bim-service-project -p 8082:8082 --restart:always [이미지명]
 # docker run -d --rm -p 8082:8082 [이미지명] (호스트 포트번호:컨테이너 포트번호)
 -> 생성 및 실행
 -> 옵션중 --restart=always 는 종료되도 자동재시작되도록 하는 옵션
