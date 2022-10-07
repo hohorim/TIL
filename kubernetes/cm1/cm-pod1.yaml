@@ -10,3 +10,22 @@ spec:
     - configMapRef: # configmap으로부터 가져올 것이다.
         name: log-level-cm
     
+    # envFrom 은 log-level-cm 이라는 configmap 에 설정된 모든 key를 pod 설정정보에 삽입하는 것.
+    # env 는 log-level-cm 이라는 configmap 에 설정된 key 중 일부선택된 key 만 pod 설정정보에 삽입하는 것.
+    # log-level-cm 에 예를 들어 설정정보가
+    # INTERVAL: 2
+    # OPTION: boy
+    # nginx.conf: [설정파일]
+    # 이렇게 있다고 가정했을 때
+    # 아래처럼 INTERVAL 설정만 넣어주는 것 가능
+    # 위는 log-level-cm 전체 설정정보를 삽입하는 것.
+
+    env:  
+    - name: INTERVAL
+      valueFrom:
+        configMapKeyRef:
+          name: log-level-cm
+          key: INTERVAL
+    
+    
+    

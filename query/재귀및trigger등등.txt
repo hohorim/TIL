@@ -1,0 +1,116 @@
+WITH main as( SELECT max(sort_no) +1 AS sort_no
+FROM (SELECT bord_id , sort_no 
+FROM manage.tm_board
+WHERE use_yn = 'Y'
+AND tenant_id = tenantId
+AND prj_id = projectId
+AND grp_id = grpId
+AND prent_id = boardId
+AND levl_no = levlNo ) t),
+main2 AS (SELECT sort_no +1 AS sort
+FROM manage.tm_board
+WHERE use_yn = 'Y'
+AND tenant_id = tenantId
+AND prj_id = projectId
+AND bord_id = boardId)
+SELECT (CASE when sort_no IS NULL THEN (SELECT sort FROM main2) ELSE sort_no END) FROM main
+
+SELECT 
+FROM manage.tm_board
+WHERE use_yn = 'Y'
+AND tenant_id = tenantId 
+AND prj_id = projectId
+AND grp_id = grpId
+AND sort_no = sortNo 
+
+
+WITH main as( SELECT max(sort_no) +1 AS sort_no
+FROM (SELECT bord_id , sort_no 
+FROM manage.tb_board_content
+WHERE use_yn = 'Y'
+AND tenant_id = tenantId
+AND prj_id = projectId
+AND grp_idx = grpIdx
+AND prent_idx = parentIdx
+AND levl_no = levlNo ) t),
+main2 AS (SELECT sort_no +1 AS sort
+FROM manage.tb_board_content
+WHERE use_yn = 'Y'
+AND tenant_id = tenantId
+AND prj_id = projectId
+AND idx = parentIdx)
+SELECT (CASE when sort_no IS NULL THEN (SELECT sort FROM main2) ELSE sort_no END) FROM main
+
+SELECT 
+FROM manage.tb_board_content
+WHERE use_yn = 'Y'
+AND tenant_id = tenantId 
+AND prj_id = projectId
+AND grp_idx = grpIdx
+AND sort_no = sortNo 
+
+
+WITH RECURSIVE chdrn as(
+	SELECT idx, bord_id, title, file_grp_uid, cont, prent_idx, grp_idx, levl_no, sort_no, use_yn, crt_dt, updt_dt, crt_ip_adres, updt_ip_adres, crt_user_id, updt_user_id, tenant_id, prj_id
+	FROM tb_board_content
+	WHERE use_yn = 'Y'
+	AND idx  = idx
+	UNION All
+	SELECT t.
+	FROM chdrn, tb_board_content t
+	WHERE t.prent_idx = chdrn.idx
+	AND t.use_yn = 'Y'
+	AND t.tenant_id = chdrn.tenant_id
+	AND t.prj_id = chdrn.prj_id
+	AND t.bord_id = chdrn.bord_id
+	AND t.grp_idx = chdrn.grp_idx
+)
+SELECT  FROM chdrn
+ORDER by sort_no
+
+
+WITH RECURSIVE chdrn AS(
+	SELECT bord_id, bord_nm, bord_hd, prent_id, grp_id, levl_no, sort_no, use_yn, crt_dt, updt_dt, crt_ip_adres, updt_ip_adres, crt_user_id, updt_user_id, cmnt_id, pub_yn, tenant_id, prj_id
+	FROM tm_board
+	WHERE use_yn = 'Y'
+	AND tenant_id = tenantId
+	AND prj_id = projectId
+	AND bord_id = bordId
+	UNION ALL 
+	SELECT t.
+	FROM chdrn, tm_board t
+	WHERE t.prent_id = chdrn.bord_id
+	AND t.use_yn = 'Y'
+	AND t.tenant_id = chdrn.tenant_id
+	AND t.prj_id = chdrn.prj_id
+	AND t.grp_id = chdrn.grp_id
+)
+SELECT  FROM chdrn
+ORDER BY sort_no 
+
+
+-- SEQUENCE RESTART 
+ALTER SEQUENCE tb_board_content_idx_seq RESTART WITH 30;
+
+
+-- trigger 생성
+CREATE TRIGGER tg_setGrpIdx
+AFTER INSERT ON manage.tb_board_content
+FOR EACH ROW  
+EXECUTE FUNCTION change_grpIdx();
+
+-- trigger 함수생성
+CREATE FUNCTION change_grpIdx() RETURNS TRIGGER LANGUAGE plpgsql AS 
+$$
+BEGIN 
+	UPDATE manage.tb_board_content 
+	SET grp_idx = idx
+	WHERE prent_idx = 0
+	AND idx = NEW.idx;
+RETURN NULL;
+END;
+$$
+
+SELECT  FROM pg_trigger;
+
+	

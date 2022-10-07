@@ -17,6 +17,7 @@ kind: Service
 metadata:
   name: clusterip-svc
 spec:
+  clusterIP: 10.100.100.200 # 노드로 접근하는 ip 수동으로 조작가능. 생략가능
   selector:
     app: cipapp
   ports:

@@ -456,7 +456,6 @@ Kubernetes 강의교육
 			ports:
 			- containerPort: 8080
 	
-파드
 	- 복수의 컨테이너 포트들은 중복되면 안됨.
 	
 	-대쉬보드가 아닌 ssh에서의 명령어:
@@ -790,7 +789,7 @@ Kubernetes 강의교육
 	- key:value 구조
 	- pod(deployment) 내에 참조됨
 	- configmap 과 secret 차이점
-		- configmap -> 기밀하지 않은 데이터 저장. 
+		- configmap -> 기밀하지 않은 데이터 저장. 컨테이너 구성 정보를 한곳에 모아서 관리
 		- secret -> 기밀한 데이터 저장. encoding(base64)으로 만듬. ex) MYSQL_ROOT_PASSWORD 
 	- 1 mega 용량 제한
 	- 구성파일(*.conf)
@@ -811,7 +810,7 @@ Kubernetes 강의교육
 		cm-1 폴더의 cm-pod1.yaml 참고
 		
 		cm-pod1 으로 pod 하나 작성할 때 configmap 을 설정한다. apply 후
-		# kubectl exec cm-pod1 -- env: 잘 적용되어 있는지 확인
+		# kubectl exec cm-pod1 -- env: 환경변수가 잘 적용되어 있는지 확인
 	
 		case 2) 볼륨기법. 볼륨으로 mount해서 configmap을 파일로 떨구기
 		cm-1 폴더의 cm-pod2.yaml 참고
@@ -859,7 +858,12 @@ Kubernetes 강의교육
 	
 	- secret 생성
 		# kubectl create secret generic my-pwd --from-literal=mypassword=k8spass#
-			generic 은 value를 인코딩해줌
+			- generic 은 value를 인코딩해줌.
+			- [generic | docker-registry | tls] 타입에 따라 뒤 옵션이 달라짐.
+				- generic: --from-literal=[key]=[value] --from-file=[파일.conf]
+				- tls: --cert=[경로] --key=[경로]
+				- docker-registry: --docker-username=[이름] --docker-password=[비밀번호] --docker-email=[이메일]
+				
 		# kubectl get secrets: 확인
 		# kubectl get secrets my-pwd -o yaml: 인코딩 된 값 확인
 	
@@ -1027,4 +1031,102 @@ Kubernetes 강의교육
 	6. Job: 
 		kubernetes 는 pod를 running 중인 상태로 유지함. 작업이 완료되면 종료. batch 처리에 적합함.
 		
-	23번쨰 동영상 CronJob 편
+	7. CronJob: 사용자가 원하는 시간에 Job 실행 예약 지원 
+	
+		- 크론식 (분 시 일 월 요일)
+		- spec.concurrencyPolicy: Allow
+			크론잡에 의해 작업이 실행될 때 이미 1개가 실행중이어도 동작하도록. 여러개 동작해도 상관x
+		  spec.concurrencyPolicy: Forbid
+			크론잡에 의해 작업이 실행될 때 1개가 동작중이면 실행시간이 되어도 동작하지않음.
+		
+- Headless Service
+	ClusterIP가 없는 서비스로 단일 진입점이 필요 없을 때 사용
+	Service와 연결된 pod의 endpoint로 dns 레코드가 생성됨.
+	pod의 dns 주소: [pod-ip-addr].[namespace].pod.cluster.local
+	
+	dns resolving service 가능해짐.
+	
+	yaml 작성 시
+		spec.type: ClusterIP
+		spec.clusterIP: None
+	
+- node label
+	Worker node의 특성을 label로 설정. pod 생성 시 지정한 노드에 실행시킬 수 있음.
+	# kubectl label nodes [노드이름] [key]:[value] (--overwrite): 노드 label 생성 (overwrite 는 변경)
+	# kubectl get node -L [key]: key로 등록된 노드들만 조회. 여러키를 동시에 넣을 시 , 로 분(띄어쓰기하면 안됨)
+	# kubectl label node [value] key-: label 제거
+	
+	spec.pnodeSelector: [key]: [value] 로 노드 지정가능.
+	value 가 true/false 로 설정해 줄 경우 반드시 (")쌍따옴표 기재 필요.
+	
+- Annotation
+	- 라벨과 동일하게 key value
+	- 관리 기록(릴리즈, 로깅, 모니터링 등)을 위한 용도
+	- kubernetes에게 특정 정보 전달할 용도
+	
+- Canary Deployment
+	- pod 배포(업데이트)하는 방법
+		. 블루 그린 업데이트
+		. 카나리 업데이트
+		. 롤링 업데이트: rolling update 등. 서비스 중단없이 업데이트.
+	- Canary 배포(업데이트)
+		. 기존 버전을 유지한 채 일부 버전만 신규 버전으로 올려서 신규 버전에 버그나 이상은 없는지 확인
+		
+	[시나리오]
+	1. spec.selector.matchLabels.app: mainui
+	   spec.selector.matchLabels.version: stable
+	   spec.replicas: 2 
+	   의 deploy pod 생성
+	   
+	   spec.selector.app: mainui 의 서비스 생성
+	   
+	   서비스에는 version: stable 의 pod 2개 동작중.
+	   
+	2. spec.selector.matchLabels.app: mainui
+	   spec.selector.matchLabels.version: canary
+	   spec.replicas: 1
+	   의 deploy pod 생성
+		
+		: service로 인해 단일 진입점에는 app: mainui 를 가지는 pod 동작.
+		  canary는 기존 버전을 유지하면서 새로운 버전을 동시에 진행.
+		  서비스에는 총 3개의 pod가 서비스에 동작된다.
+	
+- ConfigMap: 컨테이너 구성 정보를 한곳에 모아서 관리
+	
+	*그냥 저냥 알아두기
+		# rig | boxes -d [boy | stone | girl 등..]: 랜덤으로 id 생성해줌. [] 결과 형태의 옵션으로 생략하면 그냥 박스형태로나옴
+			/usr/bin/rig, yum rig-box 설치해야함. 리눅스 기본쉘스크립트실행파일.
+		
+	- yaml 파일 작성 중 spec.containers.envFrom 은 configmap 전체 설정정보 적용
+					spec.containers.env는 configmap 설정 중 일부선택한 정보만 적용
+	- configmap 최대크기: 1MB
+	
+- Secret : configmap 기능과 동일하지만 value를 base64 로 encoding 해서 container로 이동.
+	secret 먼저 생성하고 pod에 적용할 때 configmap과 같이 env, envFrom으로 지정가능
+		
+	- mount 하는 방법도 configmap과 동일
+		apiVersion: v1
+		kind: Pod
+		metadata:
+		  name: secret-pod
+		spec:
+		  containers:
+		  - image: nginx:1.21
+			name: secret-container
+			volumeMounts:
+			- name: secret-volume
+			  mountPath: /etc/config    # 여기로 secret을 떨구겠다.
+		  volumes:
+		  - name: secret-volume
+			secret:
+			  secretName: secret-model	# 생성한 secret 명
+			# secret 전체적용이 아닌 일부만 적용하고 싶다면
+			# 아래처럼 추가
+			# secret-volume 에 INTERVAL 이라는 key의 설정이 존재한다고 가정했을 때
+			# container의 마운트된 경로로 key 이름으로 된 설정만 path 라는 이름으로 마운트하는 것.
+			  items:
+				- key: INTERVAL
+				path: INTERVAL
+	
+	- 데이터 용량 제한: Secret etcd에 암호화 하지 않은 텍스트로 저장되므로 secret value가 커지면 메모리 용량을 많이 사용하게 됨.
+		secret 최대크기: 1MB

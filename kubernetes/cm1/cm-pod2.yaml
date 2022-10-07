@@ -13,4 +13,10 @@ spec:
   - name: cm-volume
     configMap:
       name: log-level-cm
-    
+    # configmap 전체적용이 아닌 일부만 적용하고 싶다면
+    # 아래처럼 추가
+    # log-level-cm 에 INTERVAL 이라는 key의 설정이 존재한다고 가정했을 때
+    # container의 마운트된 경로로 key 이름으로 된 설정만 path 라는 이름으로 마운트하는 것.
+      items:
+        - key: INTERVAL
+        path: INTERVAL

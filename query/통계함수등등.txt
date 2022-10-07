@@ -1,0 +1,150 @@
+SELECT tenant_id, project_id, title, bgng_ymd, end_ymd, location, use_yn, crt_dt, crt_user_id, updt_dt, updt_user_id
+FROM tc_project
+WHERE tenant_id = 'test-001'
+AND use_yn = 'Y'
+AND IF (:searchCode like '0', TRUE, :searchCode BETWEEN SUBSTR(bgng_ymd, 1, 4) AND SUBSTR(end_ymd, 1, 4));
+-- AND title LIKE CONCAT(:searchTxt, '%')
+
+
+WITH main as( SELECT tenant_id, project_id 
+				FROM tb_team_user 
+				WHERE tenant_id = 'test-001' 
+				AND user_id ='roowe2' 
+				AND use_yn ='Y' 
+				UNION 
+				SELECT tenant_id, project_id 
+				FROM tb_project_manager 
+				WHERE tenant_id = 'test-001' 
+				AND user_id = 'roowe2' 
+				AND use_yn ='Y' 
+			) 
+SELECT tm.tenant_id , tm.project_id , grp_prj_id , parent_project_id , project_level, tc.title 
+, tc.bgng_ymd , tc.end_ymd , tc.location , content , project_type , progress_state , tm.use_yn 
+, tm.crt_dt , tm.crt_user_id , tm.updt_dt , tm.updt_user_id , file_idx,
+(SELECT count(1) FROM ( SELECT DISTINCT user_id FROM tb_team_user WHERE 
+use_yn = 'Y' AND tenant_id = tenant_id AND project_id = project_id UNION SELECT DISTINCT 
+user_id FROM tb_project_manager WHERE use_yn = 'Y' AND tenant_id = tenant_id AND project_id 
+= project_id UNION SELECT crt_user_id FROM tm_project WHERE use_yn = 'Y' AND tenant_id = 
+tenant_id AND project_id = project_id ) t) as totalUser
+FROM tm_project tm LEFT OUTER JOIN tc_project tc
+ON tm.tenant_id = tc.tenant_id and tm.project_id = tc.project_id 
+WHERE (tm.tenant_id, tm.project_id) in (SELECT tenant_id, project_id 
+									FROM tm_project t 
+									WHERE use_yn ='Y' 
+									AND tenant_id = 'test-001' 
+									AND crt_user_id = 'roowe2' 
+									UNION 
+									SELECT tenant_id, project_id FROM main
+								)
+AND CASE NULL WHEN 'projectId' THEN tm.project_id LIKE CONCAT('', '%') ELSE title LIKE CONCAT('', '%') END 
+AND if(NULL IS NOT NULL, NOT NULL > end_ymd AND NOT NULL < bgng_ymd, true)
+AND tm.use_yn = 'Y' 
+ORDER BY tm.updt_dt DESC 
+
+
+SELECT (DATE_FORMAT(DATE_SUB(SYSDATE(), INTERVAL  31 DAY) , '%Y%m%d'))
+
+SELECT DATE_FORMAT(ADDDATE(LAST_DAY((DATE_SUB(SYSDATE(), INTERVAL  31 DAY))) , INTERVAL 1 DAY), '%Y%m%d')
+
+SELECT DATE_FORMAT(ADDDATE(LAST_DAY((DATE_SUB('20221231', INTERVAL  1 MONTH))) , INTERVAL 1 DAY), '%Y%m%d') AS lv
+
+
+# 30일 추이 개선
+WITH RECURSIVE shce AS (
+	SELECT DATE_FORMAT(ADDDATE(LAST_DAY((DATE_SUB(SYSDATE(), INTERVAL  1 MONTH))) , INTERVAL 1 DAY), '%Y%m%d') AS lv
+	UNION ALL
+	SELECT 1+shce.lv
+	FROM shce
+	WHERE shce.lv < (DATE_FORMAT(SYSDATE(), '%Y%m%d'))
+)
+SELECT lv AS days, count(tm.contnr_id) AS count
+FROM shce LEFT OUTER JOIN 
+	(SELECT DATE_FORMAT(create_dt, '%Y%m%d') AS crtDt, contnr_id FROM tm_container 
+	WHERE use_yn = 'Y'
+	AND tenant_id = :tenantId
+	) tm
+ON lv = tm.crtDt
+GROUP BY days
+
+
+
+# 30일 추이
+SELECT DATE_FORMAT(create_dt, '%Y%m%d') AS area , count(1) AS count
+FROM tm_container
+WHERE use_yn = 'Y'
+AND tenant_id = :tenantId
+AND DATE_FORMAT(create_dt, '%Y%m%d') LIKE CONCAT(:date,'%') 
+GROUP BY DATE_FORMAT(create_dt, '%Y%m%d') 
+ORDER BY area
+
+
+# pie 그래프 
+SELECT code_nm AS area, count(contnr_id) AS count
+FROM (SELECT code_cd, code_nm FROM tc_code WHERE code_type = 'CTIN_SUT') tc
+	LEFT OUTER JOIN 
+	(SELECT contnr_id, cur_suit_cd FROM tm_container 
+		WHERE tenant_id = :tenantId
+		AND use_yn = 'Y'
+		AND DATE_FORMAT(create_dt, '%Y%m%d') LIKE CONCAT(DATE_FORMAT(SYSDATE(), '%Y%m') ,'%') 
+	) tm
+ON code_cd = cur_suit_cd
+GROUP BY area
+
+
+# s1~s5 막대그래프
+SELECT code_nm AS item, count(cur_suit_cd) AS count
+FROM (SELECT code_cd, code_nm FROM tc_code WHERE code_type = 'CTIN_SUT') tc 
+	left OUTER JOIN 
+	(SELECT cur_suit_cd
+		FROM tm_container
+		WHERE tenant_id = :tenantId
+		AND file_typ_cd = :fileTypCd
+		AND DATE_FORMAT(create_dt, '%Y%m%d') LIKE CONCAT(DATE_FORMAT(SYSDATE(), '%Y%m') ,'%') 
+		AND use_yn = 'Y'
+	) tm
+ON tc.code_cd = tm.cur_suit_cd
+GROUP BY item
+
+
+# wip, shard 등 list
+SELECT projectId, contnrCont, crtDt, crtUserId, curStatCd, rn 
+from(
+	SELECT prj_id AS projectId, contnr_cont AS contnrCont, create_dt AS crtDt, create_user_id AS crtUserId, cur_stat_cd AS curStatCd, ROW_NUMBER() over(PARTITION BY cur_stat_cd ORDER BY create_dt desc) AS rn 
+	FROM tm_container
+	WHERE use_yn = 'Y'
+	AND tenant_id = :tenantId
+-- 	AND cur_stat_cd IN ('CDE_STAT_WIP', 'CDE_STAT_SHRD') # 필요없을 듯
+) t
+WHERE rn <11
+
+
+
+# 평균 참여자/자료
+SELECT ROUND(AVG(count), 0) AS val
+FROM (
+SELECT prj_id AS projectId, count(prj_id) AS count
+from(
+	SELECT contnr_id, prj_id , create_user_id
+	FROM tm_container
+	WHERE tenant_id = :tenantId
+	GROUP BY prj_id,
+		CASE :code WHEN 'user' then create_user_id 
+		ELSE contnr_id END 
+)t
+GROUP BY prj_id
+) tt
+
+
+
+SELECT CONVERT('20200101', date)
+
+
+
+SELECT GROUP_CONCAT(project_id)
+FROM tm_project
+
+
+
+
+
+
