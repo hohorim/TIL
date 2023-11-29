@@ -1,0 +1,14 @@
+- kubernetes 인증서 만료
+
+# kubeadm certs check-expiration : 기존 인증서기간 확인
+# cp -pr /etc/kubernetes/ /etc/kubernetes_backup : 기존 인증서 backup
+# kubeadm certs renew all : 인증서갱신
+# ls -l /etc/kubernetes : admin.conf 파일이 수정됨
+# \cp /etc/kubernetes/admin.conf /root/.kube/config : 인증서를 config 파일에 덮어씌우기
+ 
+서비스 재기동
+	# kill -s SIGHUP $(pidof kube-apiserver)
+	# kill -s SIGHUP $(pidof kube-controller-manager)
+	# kill -s SIGHUP $(pidof kube-scheduler)
+	# systemctl restart kubelet
+	# systemctl daemon-reload

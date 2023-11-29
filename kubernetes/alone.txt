@@ -1,0 +1,285 @@
+1) 윈도우에 ubuntu 로 docker 실행(wsl = 윈도우에서 리눅스 커널을 사용할 수 있게 해주는 기능)
+
+1. windows 기능에서 가상머신플랫폼 체크해제
+	linux용 windows 하위 시스템 체크
+	윈도우 재시작
+	#> wsl
+
+2. microsoft stroe 에서 ubuntu LTS 다운로드
+	
+3. ubuntu 실행. username, password 지정
+	username: horim
+	password: 1234
+	root/1234(root 비밀번호 1234로 바꾼것임 #> sudo passwd root)
+	#> wsl -l -v
+	#> whoami
+	
+4. wsl2 로 리눅스 커널 업데이트
+	https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi 설치
+	#> wsl --set-version Ubuntu-22.04 2
+	#> wsl -l -v : 확인. state 가 stopped 
+	
+	#> wsl --set-default-version 2: 모든 swl 이 기본적으로 wsl2 사용하도록 설정
+	
+5. windows 에 Docker 설치
+	공식 홈페이지에서 설치파일 다운로드해서 설치 실행
+	#> docker -v : 설치 확인
+	docker signin: leehorim/passage0
+	설치파일 실행해서 docker 활성화
+	#> docker run hello-world
+
+6. ubuntu 에 docker 설치
+	#> wsl -d [name]: 머신 시작
+	#> wsl -t [name]: 머신 종료
+	#> wsl : ubuntu shell 접근
+	#> sudo apt-get update
+	#> sudo apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+	#> curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+	#> echo \
+	  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+	  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+	  
+	  
+	#> apt-get update
+	#> apt-get install -y docker-ce docker-ce-cli containerd.io
+
+	#> docker version
+	
+7. docker 활성화
+	#> sudo systemctl enable docker
+		- error: Synchronizing state of docker.service with SysV service script with /lib/systemd/systemd-sysv-install
+		- 해결1: 
+			#> su - (비밀번호 1234)
+			#> /lib/systemd/systemd-sysv-install enable docker
+			#> /etc/init.d/docker start
+		- 해결2:System has not been booted with systemd as init system (PID 1). Can't operate
+			(원인: wsl은 루트시스템 프로세스가 systemd 가 아닌 init이기 때문임. wsl2 버전 업데이트해서 그런듯. 그래서 init 을 systemd로 바꿔줘야됨)
+			#> su - : root 로 접속
+			#> cd / : 최상위 디렉토리로 이동
+			#> cd etc
+			#> nano wsl.conf
+				[boot]
+				systemd=true
+			cmd 관리자실행 후 #>Restart-Service LxssManager :재부팅
+				(또다른 재부팅: 윈도우 검색에 서비서 -> LxssManager 다시시작
+				 또다른 재부팅: window shell 에서 wsl --shutdown
+				 또다른 재부팅: ubunt shell 에서 wsl.exe --shutdown) 이 방법으로함
+			#> pstree: init 이 아닌 systemd 인지 확인
+		- 해결3: 
+			#> cd /tmp
+				wget --content-disposition \
+				  "https://gist.githubusercontent.com/djfdyuruiry/6720faa3f9fc59bfdf6284ee1f41f950/raw/952347f805045ba0e6ef7868b18f4a9a8dd2e47a/install-sg.sh"
+			#> chmod +x /tmp/install-sg.sh
+			#> /tmp/install-sg.sh && rm /tmp/install-sg.sh		
+			
+	#> sudo systemctl start docker
+	#> sudo systemctl enable containerd
+	#> sudo systemctl start containerd
+8. 컨테이너 실행
+	#> docker run --rm hello-world
+	
+9. horim 이라는 유저에 docker 권한주기
+	#> sudo groupadd docker: 그룹생성
+	#> sudo usermod -aG docker horim: docker라는 그룹에 horim 생성
+	#> newgrp docker: 로그아웃 
+	#> id: horim 로그인상태에서 docker 가 있는지 확인
+	#> docker ps: 확인
+	
+	
+2) 가상머신에서 ubuntu 설치하고 k8s 실행
+https://cla9.tistory.com/91
+
+1. 가상머신(virtualBox) 설치. 
+2. master node vm 생성. vm 설정. 
+	사용자 이름: k8s/1234. 
+	sudo: root/1234
+3. 환경구성
+	#> sudo -i
+	#> passwd: root 비밀번호 변경
+	#> apt update
+	#> apt install openssh-server
+	#> apt install net-tools: ifconfig 명령어 사용위해
+	#> ufw disable: 모든방화벽 해제
+	#> ufw status verbose: 방화벽상태확인
+	#> apt-get install vim: Vim 설치
+	
+	편의기능:
+		메뉴 장치> 게스트 확장 CD 이미지 삽입 클릭
+		메뉴 장치> 클립보드 공유 > 양방향
+	
+4. 네트워크 설정
+	#> vi /etc/hosts: master, node ip 등록
+		192.168.56.101, ~102, ~103
+	#> hostnamectl set-hostname master: hostname 변경
+	#> hostname: 확인
+	#> ifconfig: ip 확인
+		enp0s3 의 inet ip 주소가 다른 pc 에서 ssh 접속할 수 있는 주소다.
+		#> ssh k8s@[ip주소] : ssh 접속. 되는지 확인
+5. Host Only Ethernet 설정
+	#> cd /etc/netplan/: 해당 디렉토리에 있는 파일 열어서 수정
+		network:
+		  version: 2
+		  renderer: NetworkManager
+		  ethernets:
+		    enp0s8:
+			  dhcp6: no
+			  addresses:
+			  - 192.168.56.101/24
+			  gateway4: 192.168.56.1
+			  nameservers:
+			    addresses: [8.8.8.8,8.8.4.4]
+	#> netplan apply: 고정 ip 설정 적용
+	#> hostname -I: IP 정상확인
+	#> reboot: 변경적용을 위한 재시작
+6. Docker 설치
+	#> sudo -i
+	#> apt install docker.io
+	#> docker ps
+	#> docker run -d -p 80:80 --rm --name nginx nginx: nginx 가동 후 브라우저에서  localhost 주소창 쳐서 작동확인
+	#> docker stop nginx
+	#> docker rmi nginx
+7. k8s 설치
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+
+	- swap 비활성화해야함: swap 기능은 본래 가용된 메모리보다 더 큰 메모리 할당을 가능하도록 하기 위함인데,
+		쿠버네티스 철학은 주어진 인스턴스의 자원을 100% 가깝게 사용하는 것이 목표이기 때문에 부합되지 않음.
+		따라서, 성능을 제대로 사용하기 위해서는 swap 기능 비활성화 해야함
+	#> swapoff -a: swap 중지
+	#> sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab : 근데 재부팅되면 초기화되므로 완전 중지
+	#> vi kubeadm-install.sh: 쉘스크립트 생성. 하위 입력
+
+		sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+		curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+		cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+		deb https://apt.kubernetes.io/ kubernetes-xenial main
+		EOF
+		sudo apt-get update
+		sudo apt-get install -y kubelet kubeadm kubectl
+		sudo apt-mark hold kubelet kubeadm kubectl
+	
+	#> sh kubeadm-install.sh: 쉘파일 실행
+	#> halt: 노드 중지
+	<스냅샷>
+	
+	- 자동완성
+	source <(kubectl completion bash)
+	echo "source <(kubectl completion bash)" >> ~/.bashrc
+	
+8. worknode 복제생성
+	- master node 종료하고 worker node 복제
+	- 복제된 work노드 설정
+	#> sudo -i
+	#> hostnamectl set-hostname node1
+	#> cd /etc/netplan/: 해당 디렉토리에 있는 파일 열어서 수정
+		network:
+		  version: 2
+		  renderer: NetworkManager
+		  ethernets:
+		    enp0s8:
+			  dhcp6: no
+			  addresses:
+			  - 192.168.56.102/24 # WORK NODE IP
+			  gateway4: 192.168.56.1
+			  nameservers:
+			    addresses: [8.8.8.8,8.8.4.4]
+	#> netplan apply: 고정 ip 설정 적용
+	#> hostname -I: IP 정상확인
+	#> reboot: 변경적용을 위한 재시작
+	
+9. 마스터 노드, 워커 노드에서 ping 테스트
+	#master> ping node1
+	#master> ping node2
+	#node1> ping master
+	#node1> ping node2
+	#node2> ping master
+	#node2> ping node1
+	
+10. kubeadm init 명령, node 연결(# 반드시 master node 에서만 수행)
+	#> sudo -i
+	#> kubeadm init
+		Your Kubernetes control-plane has initialized successfully!
+
+		To start using your cluster, you need to run the following as a regular user:
+
+		  mkdir -p $HOME/.kube
+		  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+		  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+			: kubectl 을 통해 kube api server와 통신하기 위한 클라이언트 설정
+			
+		Alternatively, if you are the root user, you can run:
+
+		  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+		You should now deploy a pod network to the cluster.
+		Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+		  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+		Then you can join any number of worker nodes by running the following on each as root:
+
+		kubeadm join 192.168.3.62:6443 --token 8b1cp6.u1xkvefvijhrac1y \
+			--discovery-token-ca-cert-hash sha256:67fb47d8065840bef927aac8a56ec7031ab6d2b3de709c285063297a389f151e 
+			: worker 노드에서 matser 노드 클러스터에 합류하기 위한 명령어
+		
+		1) 마스터노드에서 사용자계정으로 mkdir~,sudo~,sudo~ 명령어 실행
+		2) 워커노드에서 루트꼐정으로 join 명령어 실행
+		#master>사용계정> kubectl get nodes: 노드확인
+
+11. overlay network 설치
+	#master> kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml
+	#master> kubectl get nodes: status 가 Ready 인지 확인
+	
+	- 정상설치확인
+	#master> kubectl create deploy nginx-deploy --image=nginx
+	#master> kubectl get pods -o wide
+	#master> kubectl delete deploy nginx-deploy
+
+12. NFS 서버 설치
+	- work node 1에서 nfs 서버 구축
+		#> sudo -i
+		#> apt-get update
+		#> apt install nfs-common nfs-kernel-server portmap
+		#> mkdir /home/share/nfs -p: 공유 폴더 생성
+		#> chmod 777 /home/share/nfs
+		#> vi /etc/exports: 공유폴더의 허용 host 및 권한설정
+			/home/share/nfs       192.168.56.101(rw,sync,no_subtree_check) 192.168.56.102(rw,sync,no_subtree_check) 192.168.56.103(rw,sync,no_subtree_check)
+			
+		#> service nfs-server restart: nfs-server 재기동
+		#> systemctl status nfs-server.service: nfs-server 상태확인
+		#> showmount -e 127.0.0.1: mount 목록 정상반영 확인
+		#> mount -t nfs 192.168.56.102:/home/share/nfs /mnt: 마운트
+		#> echo test >> /home/share/nfs/test.txt: 공유폴더 테스트
+		#> cat /mnt/test.txt
+		
+	- master node
+		#> apt update
+		#> apt install nfs-common nfs-kernel-server portmap
+	
+	- work node 2
+		#> apt update
+		#> apt install nfs-common nfs-kernel-server portmap
+		
+	- 테스트
+		#master> vi pv.yaml
+			apiVersion: v1
+			kind: PersistentVolume
+			metadata:
+			  name: my-pv
+			spec:
+			  capacity:
+				storage: 10Mi
+			  volumeMode: Filesystem
+			  accessModes:
+				- ReadWriteOnce
+			  persistentVolumeReclaimPolicy: Recycle
+			  nfs:
+				path: /home/share/nfs
+				server: 192.168.56.102
+		#master> kubectl create -f pv.yaml
+		#master> kubectl create -f pv.yaml: status Available 확인
+		#master> kubectl delete -f pv.yaml

@@ -1,0 +1,48 @@
+
+- file donwload
+	const downloadFile=(fileId)=>{
+		proxy.$axios.get(`/api/folder/file/my/download/${fileId}`).then(response=>{
+
+			if(response.data){
+				// let bytes = response.data;
+				// let arraybuffer = new Uint8Array(bytes.length)
+				// for(let i= 0; i<bytes.length; i++){
+				//     arraybuffer[i] = bytes[i].charCodeAt();
+				// }
+
+				// const fileName = "hanoffice.hwp";
+				const fileName = response.headers['content-disposition'].split('filename=')[1].replaceAll('\"', "")
+				const url = window.URL.createObjectURL(response.data);
+				const link = document.createElement("a");
+
+				link.href = url;
+				link.setAttribute("download", fileName);
+				document.body.appendChild(link);
+				link.click();
+				link.remove();
+				window.URL.revokeObjectURL(url);
+			}
+
+		});
+	}
+
+
+- Predicate
+	rs = rs.stream().filter(createSearchFilters(searchType, searchTxt, null).stream().reduce(x->true, Predicate::and)).sorted(Comparator.comparing(TeamUserEntity::getCreateDateTime)).toList();
+
+	private List<Predicate<TeamUserEntity>> createSearchFilters(String code, String searchTxt, String teamId) {
+		List<Predicate<TeamUserEntity>> rs = new ArrayList<>(Arrays.asList(x -> x.getUseYn().equals("Y")));
+		if (StringUtils.isNotBlank(teamId)) {
+			rs.add(x -> x.getTeamId().equals(teamId));
+		}
+
+		if (StringUtils.isNotBlank(code)) {
+			if (SearchType.SEARCH_USER_ID.equals(code)) {
+				rs.add(x -> x.getUserId().contains(searchTxt));
+			} else if (SearchType.SEARCH_USER_NM.equals(code)) {
+				rs.add(x -> x.getUserName().contains(searchTxt));
+			}
+		}
+
+		return rs;
+	}

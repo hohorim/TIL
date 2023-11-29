@@ -978,6 +978,10 @@ Kubernetes 강의교육
 		# kubectl rollout undo deploy deploy-bim-service-project -n ns-bim (--to-revision=[번호]): 
 			전단계로 rollback. ()는 history 번호를 지정해서 그 번호로 rollback
 			
+		-
+		# kubectl rollout restart deploy [deploy 명] : 이미 deploy.yaml 만들어져있는 상태고 돌아가고있는 pod에 대해 이미지 업데이트
+			이미지는 deploy 에 명시되어있는거 바라봄. 이미지명은 같고 안에 내용이 바뀌었을 때 쓰면유용.
+		
 		- kubectl apply vs kubectl create:
 			apply 는 기존 객체를 변경. 즉 내렸다가 안올리고 바로 apply
 			create는 새로운 객체 생성. 기존에 존재하지 않아야 함.

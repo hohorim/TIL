@@ -1,0 +1,206 @@
+// ~~.js
+
+import './App.css';
+import React, {useState} from 'react';
+
+// 함수형 컴포넌트
+// render() 없이 UI 작성
+export default function App() {
+    const [todoData, setTodoData] = useState(
+        [{
+            id: '1',
+            title: '공부하기',
+            completed: false
+        }],
+    );
+
+    const [inputTodo, setInputTodo] = useState("");
+    
+
+    const btnStyle = {
+        color: '#fff',
+        border: 'none',
+        padding: '5px, 9px',
+        borderRadius: '50%',
+        cursor: 'pointer',
+        float: 'right'
+    }
+
+    const getStyle = (completed) => {
+        return {
+            padding: '10px',
+            borderBottom: '1px #ccc dotted',
+            textDecoration: completed ? 'line-through' : 'none',
+
+        }
+    }
+
+    const handleClick = (id) => {
+        let items = todoData.filter(x => x.id !== id);
+        setTodoData(items);
+    }
+
+    const handleChange = (e) => {
+        setInputTodo(e.target.value);
+    }
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        let item = {
+            id: Date.now(),
+            title: inputTodo,
+            completed: false
+        };
+        setInputTodo('');
+        setTodoData(x=>[...x, item])
+    }
+
+    const handleChangeComplete = (id) => {
+        let items = todoData.map(x => {
+            if (x.id === id) x.completed = !x.completed;
+            return x;
+        })
+
+        setTodoData(items);
+    }
+
+    return (
+        <div className="container">
+            <div className='todoBlock'>
+                <div className='title'>
+                    <h1>할일목록</h1>
+                </div>
+
+                {/** 
+                     리엑트 는 가상 DOM 과 바뀐 돔 차이를 key 를 보고 판단한다.
+                     만약 key 값을 id 같은 유일한 값이 아닌 index 값을 주었을 경우 
+                     중간에 값 하나가 삽입되었을 때 전부 새롭게 그려낼 것이다. 
+                     왜냐, index 가 key 이니 키에 할당 된 이전 값과 현재값이 달라지기 때문에 전부 바뀌었다고 판단하는 것이다 
+                     따라서 key 값은 id 값 등 유일키가 좋고 index 값으로 지정을 하지 않는게 좋다. */}
+
+                {todoData.map(x =>
+                    <div style={getStyle(x.completed)} key={x.id}>
+                        <input type='checkbox' defaultChecked={x.completed} onChange={() => handleChangeComplete(x.id)} />{x.title}
+                        <button style={btnStyle} onClick={() => handleClick(x.id)}>x</button>
+                    </div>
+                )}
+
+                <form style={{ display: 'flex' }} onSubmit={handleSubmit}>
+                    <input type='text' name="value" style={{ flex: '10', padding: '5px' }} value={inputTodo} onChange={handleChange} />
+                    <input type='submit' value="입력" className='btn' style={{ flex: '1' }} />
+                </form>
+
+            </div>
+        </div>
+    );
+}
+
+
+// 클래스형 컴포넌트
+// render() 필요
+// export default class App extends Component{
+
+//     // 화면에 리렌더링 해주기 위해 State 사용
+//     state ={
+//         todoData :[ 
+//             {
+//                 id: '1',
+//                 title: '공부하기',
+//                 completed: false
+//             },
+//             {
+//                 id: '2',
+//                 title: '장보기',
+//                 completed: false
+//             },
+//             {
+//                 id: '3',
+//                 title: '청소하기',
+//                 completed: false
+//             },
+//         ],
+//         inputTodo: '',
+//     }
+
+//     btnStyle ={
+//         color: '#fff',
+//         border : 'none',
+//         padding: '5px, 9px',
+//         borderRadius: '50%',
+//         cursor: 'pointer',
+//         float: 'right'
+//     }
+
+//     getStyle =(completed)=>{
+//         return {
+//             padding: '10px',
+//             borderBottom: '1px #ccc dotted',
+//             textDecoration: completed?'line-through':'none',
+
+//         }
+//     }
+
+//     handleClick=(id)=>{
+//         let items =this.state.todoData.filter(x=>x.id !== id);
+//         this.setState({todoData:items});
+//     }
+
+//     handleChange=(e)=>{
+//         this.setState({inputTodo: e.target.value});
+//     }
+
+//     handleSubmit=(e)=>{
+//         e.preventDefault();
+        
+//         let item = {
+//             id: Date.now(),
+//             title: this.state.inputTodo,
+//             completed: false
+//         };
+//         this.setState({ inputTodo: '',todoData: [...this.state.todoData, item]});
+//     }
+
+//     handleChangeComplete=(id)=>{
+//         let items = this.state.todoData.map(x=>{
+//             if(x.id === id) x.completed = !x.completed;
+//             return x;
+//         })
+
+//         this.setState({todoData:items});
+//     }
+
+//     render(){
+//         return(	
+
+//             <div className="container">
+//                 <div className='todoBlock'>
+//                     <div className='title'>
+//                         <h1>할일목록</h1>
+//                     </div>
+
+//                     {/** 
+//                      리엑트 는 가상 DOM 과 바뀐 돔 차이를 key 를 보고 판단한다.
+//                      만약 key 값을 id 같은 유일한 값이 아닌 index 값을 주었을 경우 
+//                      중간에 값 하나가 삽입되었을 때 전부 새롭게 그려낼 것이다. 
+//                      왜냐, index 가 key 이니 키에 할당 된 이전 값과 현재값이 달라지기 때문에 전부 바뀌었다고 판단하는 것이다 
+//                      따라서 key 값은 id 값 등 유일키가 좋고 index 값으로 지정을 하지 않는게 좋다. */}
+
+//                     {this.state.todoData.map(x=>
+//                         <div style={this.getStyle(x.completed)} key={x.id}>
+//                             <input type='checkbox' defaultChecked={x.completed} onChange={()=>this.handleChangeComplete(x.id)}/>{x.title}
+//                             <button style={this.btnStyle} onClick={()=>this.handleClick(x.id)}>x</button>
+//                         </div>
+//                     )}
+
+//                     <form style={{ display: 'flex' }} onSubmit={this.handleSubmit}>
+//                         <input type='text' name="value" style={{flex: '10', padding: '5px'}} value={this.state.inputTodo} onChange={this.handleChange}/>
+//                         <input type='submit' value="입력" className='btn' style={{ flex: '1' }} />
+//                     </form>
+                    
+//                 </div>
+//             </div>
+//         )
+
+//     }
+// }
