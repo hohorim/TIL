@@ -1,0 +1,24 @@
+[Vue]
+- 프로젝트 시작
+	# npm init vue: vite 로 vue 프로젝트 생성
+	# npm install
+
+- 데이터 보간법: v-once 디렉티브
+	반응형 객체라도 템플릿 안에서 선언하면 반응되지않음
+	
+- ref: 원시타입 반응형 가능. 하지만 객체형도 가능
+- reactive: 객체형만 반응형 가능. javascript 부분에 "value" 로 접근안해도됨.
+
+1. {inded :index ...} =>{index ...}
+2. let {index, title} = dataset.value.resultData;
+3. let copyTitle = readonly(title)=> 원본이 복사되면서, copyTitle 은 변경이 되지 않도록.
+	readonly(): 깊은 복사
+	shallowReadonly(): 얕은 복사
+4. {{}} 에 script 코드 바로 넣지 말고, computed()로 변수에 넣어서 변수를 {{}} 에 집어넣자. 
+	computed 가 캐시되서 훨씬 메모리적으로 좋음
+5. v-cloak: 렌더링은 되있지만 아직 데이터가 안들어와서 바인딩이 안된상태일 때 사용하면 굿.
+	loading icon container 할 때 쓰면 좋을듯
+6. v-once: 한번만 렌더링됨. 성능 굿
+
+https://www.inflearn.com/course/lecture?courseSlug=vue-%EC%99%84%EB%B2%BD-%EA%B8%B0%EB%B3%B8&unitId=115329 
+22:50

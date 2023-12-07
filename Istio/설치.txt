@@ -1,0 +1,11 @@
+1. 다운로드
+	$ curl -L https://istio.io/downloadIstio | sh -
+	
+2. 경로에 클라이언트 추가
+	$ cd istio-1.20.0
+	$ export PATH=$PWD/bin:$PATH
+
+4. 설치
+	$ istioctl install --set profile=demo -y
+	$ kubectl label namespace default istio-injection=enabled: 나중에 애플리케이션을 배포할 때 Envoy 사이드카 프록시를 자동으로 삽입하도록
+	

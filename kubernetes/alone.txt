@@ -1,5 +1,7 @@
 1) 윈도우에 ubuntu 로 docker 실행(wsl = 윈도우에서 리눅스 커널을 사용할 수 있게 해주는 기능)
 
+ssh horim@172.17.104.45
+
 1. windows 기능에서 가상머신플랫폼 체크해제
 	linux용 windows 하위 시스템 체크
 	윈도우 재시작
@@ -91,7 +93,83 @@
 	#> id: horim 로그인상태에서 docker 가 있는지 확인
 	#> docker ps: 확인
 	
+
+- dns 설정
+	#> sudo vi /etc/docker/daemon.json
+		{
+			"dns": ["8.8.8.8", "8.8.4.4"]
+		}
+
+	#>  sudo vi /etc/resolv.conf
+	nameserver 8.8.8.8
+	#> sudo service docker restart
 	
+(10, 11) https://spidyweb.tistory.com/407 참고	
+10. cri-dockerd 설치하기 ( 미니쿠베를 위해서 dockerd 필요)
+	이쪽은 root 에서 하지말고 사용자에서 하기
+	#> git clone https://github.com/Mirantis/cri-dockerd.git
+	
+	#> wget https://storage.googleapis.com/golang/getgo/installer_linux
+	chmod +x ./installer_linux
+	./installer_linux
+	source ~/.bash_profile
+	cd cri-dockerd
+	mkdir bin
+	go build -o bin/cri-dockerd
+	mkdir -p /usr/local/bin
+	sudo install -o root -g root -m 0755 bin/cri-dockerd /usr/local/bin/cri-dockerd
+	sudo cp -a packaging/systemd/* /etc/systemd/system
+	sudo sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service
+	sudo systemctl daemon-reload
+	sudo systemctl enable cri-docker.service
+	sudo systemctl enable --now cri-docker.socket
+	
+11. 미니쿠베 설치
+	이쪽은 root 에서 하지말고 사용자에서 하기
+	#> cd ~
+	#> curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+	  && chmod +x minikube
+	  
+	#> sudo mkdir -p /usr/local/bin/
+	#> sudo install minikube /usr/local/bin/
+	
+	#> sudo apt-get install -y conntrack: conntrack 설치
+	
+	- crictl 설치
+		#> VERSION="v1.24.2"
+			wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+		#> sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
+		#> rm -f crictl-$VERSION-linux-amd64.tar.gz
+
+
+	#> minikube start --vm-driver=none: 미니쿠베 시작
+	
+	#>  minikube status: 상태확인
+	
+	* 스타트 안되면 https://minikube.sigs.k8s.io/docs/start/ 가이드 확인
+			#> docker system prune
+			#> minikube delete
+			#> minikube start --driver=docker 
+			이거도 확인
+		
+	- kubectl 설치
+		#> sudo apt-get update && sudo apt-get install -y apt-transport-https gnupg2
+		#> curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+		echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
+		sudo apt-get update && sudo apt-get install -y kubectl
+		#> sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config  --> 이부분 에러나는데 version 확인은 됨..
+		#> sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+		#> sudo kubectl version
+
+		* https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/ 참고
+		
+		
+@@ 쓸거면
+$ systemctl status docker
+$ minikube status
+$ minikube start --driver=docker
+		
 2) 가상머신에서 ubuntu 설치하고 k8s 실행
 https://cla9.tistory.com/91
 
@@ -266,20 +344,21 @@ https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-ku
 		
 	- 테스트
 		#master> vi pv.yaml
-			apiVersion: v1
-			kind: PersistentVolume
-			metadata:
-			  name: my-pv
-			spec:
-			  capacity:
-				storage: 10Mi
-			  volumeMode: Filesystem
-			  accessModes:
-				- ReadWriteOnce
-			  persistentVolumeReclaimPolicy: Recycle
-			  nfs:
-				path: /home/share/nfs
-				server: 192.168.56.102
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+	storage: 10Mi
+  volumeMode: Filesystem
+  accessModes:
+	- ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+	path: /home/share/nfs
+	server: 192.168.56.102
 		#master> kubectl create -f pv.yaml
 		#master> kubectl create -f pv.yaml: status Available 확인
 		#master> kubectl delete -f pv.yaml
+		
