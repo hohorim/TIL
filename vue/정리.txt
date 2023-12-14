@@ -19,6 +19,19 @@
 5. v-cloak: 렌더링은 되있지만 아직 데이터가 안들어와서 바인딩이 안된상태일 때 사용하면 굿.
 	loading icon container 할 때 쓰면 좋을듯
 6. v-once: 한번만 렌더링됨. 성능 굿
+7. non-props: id, class 와 같은 선언되지않거나 명시되지 않은 props.
+	자식 component 로 속성넘길 때 props 에 정의를 안하면 non-props 로 지정이 되는데
+	non-props 는 html 요소에서 $attrs['calmelcase'] 식으로, script 에서는 setup(props, context){context.attrs} 이런식으로 불러오면됨.
+	props 는 $props.~~, script 에서는 props.~~ 이렇게 불러오면됨.
+	문제: 만약 non-props 로 할 경우 자식 컨포넌트 최상위 루트에 속성이 자동으로 붙게됨. 그래서 이벤트 같은 경우 명시하지 않은 non-props 로 정의할 경우
+		예기치 못한 문제가 발생. 이를테면, 이벤트가 전파되는 버블현상이 나타나던가 함. 
+		따라서, 변수든 이벤트든 나중에 찾아가기 쉽게 non-props 대신 props로 정의를 하는게 더 좋을 듯 함.
 
-https://www.inflearn.com/course/lecture?courseSlug=vue-%EC%99%84%EB%B2%BD-%EA%B8%B0%EB%B3%B8&unitId=115329 
-22:50
+8. provide,inject
+	깊은 계층 component 에서 부모에서 맨 하위 자식에 data를 props로 넘길때 중간에 있는 자식은 사용하지도 않을 props를 선언해서 전달,전달 이런식으로 진행해야한다.
+	이것을 쉽게 할 수 있도록 만들어줌.
+	- 부모에서 하위로 넘길 데이터를 provide("고유 아이디", 넘길변수명);
+		provide("고유 아이디", readonly(넘길변수명)); 이런식으로 readonly api 사용해서 잠글수도 있음.
+	- 하위에서 받는 것은 inject("고유 아이디"). inject("고유 아이디", default) -> default 도 지정할 수 있음.
+	
+	
