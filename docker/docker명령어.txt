@@ -91,7 +91,13 @@ ENTRYPOINT ["java","-jar","appProject.jar"]
 -> 모든 컨테이너 데몬 재시작
 
 # docker save -o [저장할 파일명.tar] [이미지명]
--> 이미지 파일저장
+-> 이미지 tar 파일저장
+
+# docker save -o all-images.tar nginx:latest redis:latest mysql:8.0
+-> 여러 이미지를 하나의 tar 파일로 저장
+
+# docker load -i 파일명.tar(.gz)
+-> tar파일을 이미지로 복원
 
 # docker export -o [저장할 파일명.tar] [컨테이너명]
 -> 컨테이너 저장
@@ -148,10 +154,18 @@ ENTRYPOINT ["java","-jar","appProject.jar"]
 
 # docker-compose down
 -> compose파일 종료
--> -> docker-compose -f [compose파일 경로] down 도 가능
+-> docker-compose -f [compose파일 경로] down 도 가능
+
+# docker-compose up --build --force-recreate -d
+-> build: 변경된 이미지 다시빌드
+-> force-recreate: 변경된 사항 적용하여 컨테이너 재생성
 
 # docker cp [파일명] [컨테이너명]:[경로및파일명]
 -> 로컬에 있는 파일을 컨테이너 경로로 파일복사
 
 # prometheus
 docker run -d --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus:v1.7.0
+
+
+# Docker nfs volume 생성
+docker volume create --driver local --opt type=nfs --opt o=addr=192.168.255.109,rw --opt device=:/data/SAMANWIN/billing-predict test_vol

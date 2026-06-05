@@ -1,0 +1,194 @@
+@ mongod 설치
+1. 설치
+2. 환경변수 설정
+3. # mongod -v : 설치 확인
+4. 데이터 저장할 경로 지정
+	D:\Program Files\MongoDB\data 에 폴더 생성해주고
+	# mongod --dbpath "D:\Program Files\MongoDB\data" : 경로 지정 및 시작
+	# cntr+c : 종료됨
+
+@ mongodb shell 설치
+1. mongodb shell 설치
+2. 설치된 파일다운로드에서 실행파일 실행 (C:\Users\User\AppData\Local\Programs\mongosh)
+3. 엔터 누륵 test> 되면 성공. 안되면 mongodb 작동시켜야됨
+
+@ 데이터베이스 도구 설치(v 4.x 이후 mongo 는 db 서버와 별도로 유틸 도구를 따로 설치해줘야함)
+1. MongoDB Command Line Database Tools Download 
+2. 환경변수 설정
+
+# mongod: 서버실행
+# mongosh: mongodb 쉘 접속 
+	보통 #mongo 치면 된다는데 난 exe실행파일이 bin에 안들어있어서 안됨.
+	그래서 쉘 프로그램을 설치해서 한거임
+
+- admin 계정
+	# use admin: admin db로 이동
+	# db.createUser({user:"admin", pwd:passwordPrompt(), roles:[{role: "userAdminAnyDatabase", db:"admin"},"readWriteAnyDatabase"]})
+		: admin 계정 생성
+
+	# db.createUser({user:"root", pwd:passwordPrompt(), roles:['root']}) : root 계정생성
+		-- passwordPrompt() 는 비밀번호 치는 걸 안보여줌.
+			db.auth("root", "1234") 이런식인 것을 db.auth("root") 친 후에 비밀번호 치는 것으로 할 수 있음.
+
+	- security.authorization 활성화
+		mongo.conf 파일 수정
+			-만약 못찾을 경우(window) 
+				1. windows+r
+				2. services.msc
+				3. mongodb 찾고 속성에서 보면 config 파일 위치나옴.
+		security:
+			authorization: enabled 입력
+			
+		mongodb 재부팅
+		- 만약 replicaset과 샤드 클러스터를 이용해야한다면, clustermanager 권한부여
+		# db.grantRolesToUser('admin', ['clusterManager'])
+
+
+	
+
+- bim 
+	mongo shutdown 
+		# mongod --shutdown
+	mongo start
+		# mongod --dbpath /var/lib/mongo --fork --logpath /var/log/mongodb/mongod.log
+			근데 위에가 아니고 아래 명령어임. config 파일을 기준으로 진행
+			# mongod --config /etc/mongod.conf --fork 
+
+
+
+
+
+
+
+
+
+@ 기본개념
+- Dababase: 컬렉션의 물리적 컨테이너.
+	하나의 데이터베이스에 보통 여러개 컬렉션 존재
+
+- Collection: Document의 그룹
+	Table과 같은 개념
+	스키마를 딱 하나만 지정하는 듯한 강요는 없어서, 컬렉션 내부 도큐먼트들의 스키마는 다를 수 있고, 서로 다른 필드를 가짐.
+	* 스키마: 해당 컬렉션의 문서에 어떤 종류의 값이 들어가는지를 정의
+
+- View: 다른 컬렉션 또는 뷰의 집계 파이프라인에 의해 콘텐츠가 정의되는 읽기 전용 쿼리 개체
+
+- Document:	하나의 key와 값의 집합.
+	동적 스키마(동일한 컬렉션 내의 도큐먼트가 동일한 필드 또는 구조를 가질 필요없음, 동일한 필드안에 다른타입의 데이터 보유가능)
+	Tuple/Row 와 같은 개념
+	
+- Field:
+	Column 과 같은 개념
+	
+- Bucket: 일반적으로 파일 저장소는 bucket 이라고 지칭
+	GridFs 도 bucket 이라고 지칭
+	bucket 은 일종의 컬렉션 중 하나로 파일의 청크를 담고 있는 저장소입니다.
+	즉 fs.files 와 fs.chunks 는 하나의 bucket 으로 봄.
+
+- 함께 조회되는 경우 빈번한 데이터들은 같은 collection 에 담아. query 횟수를 줄일 수 있다.
+- 주로 읽기만 하는 데이터와 자주 업데이트하는 데이터는 별개의 collection에 담는다.
+
+- Entity 간의 relation 을 collection 간에 reference 할지, embed 할지 결정
+	- reference: colletion 간 참조할 수 있도록 id 저장 (쓰기에 빠름, document 하나만 수정/query 여러번 실행)
+	- embed: 관계된 document를 통째로 저장 (읽기에 빠름, query 한번에 모두조회/document 중복 수정작업 필요)
+	- 잦은 수정이 일어난다면 reference 가 더 바람직
+	
+- 한 Document 의 최대 저장할 수 있는 Size 는 16MB(BSon 문서 제한 크기임)
+- database 최대 64 TB
+
+-BSON: 
+	배열 및 중첩 Document 와 같은 복잡한 데이터 유형을 효율적으로 저장할 수 있는 유연한 JSON 과 유사한 형식인 BSON(binary json)으로 저장.
+	?? json이 아닌 bson 사용 이유
+	1. json 은 제한된 수의 기본 데이터 유형만 지원. 특시 날짜 및 이진 데이터에 대한 지원 부족
+	2. json 개체 및 속성에는 고정 길이가 없으므로 순회 속도가 느려짐.
+	
+	json은 사람, 기계가 읽을 수 있지만, bson은 기계만 읽기 가능.
+	json 보다 bson 이 데이터 유형지원이 훨씬 많이 됨.
+	
+
+- MongoTemplate vs MongoRepository
+
+- primary Key
+	mongoDB 는 _id 라는 필드를 같이 insert 해주지 않으면 mongodb 클라이언트에서 ObjectId 타입으로 자동으로 만들어진다.
+	unix 날짜정보, 클라이언트 고유 ip/mac 번호, processid, 자동증가 값으로 구성.
+	Entity Annotaion으로 @Id 라고 지칭할 수 있는데, 만약 자동이 아닌 직접 _id 값을 넣는다면
+	@MongoId(value = FieldType.STRING) 로 선언해야함.
+	그렇지 않으면, 타입이 달라져서 find 해오지 못하고 계속 null 값이 return 됨.
+	
+	
+- JAVA로 MongoDB에서 데이터 조회할 때, 자식 클래스 중 어떤 클래스와 매핑할 지 결정하는 것은  Document 내 저장되어 있는 _class이다. 
+	_class는 JAVA에서 데이터 저장 시, Document에 자동으로 같이 저장된다.
+	_class로 구분하기 때문에, 자식 클래스의 클래스명은 변경하면 안된다. 변경 시, 기존 저장된 데이터를 매핑해서 가지고오지 못한다.
+
+- 인덱스는 읽기이벤트가 많이 일어나는 collection에 유리함.
+	반면에, 쓰기 이벤트가 많이 일어나는 collection에 설정하게 되면, update 혹은 insert 될 때마다 
+	index가 재생성되어야 함으로 비용이 많이들음.
+	
+- BulkOps: 다량의 데이터를 한번에 업데이트/삭제 시 사용. I/O 작업 줄이고, 데이터 처리속도 향상
+	BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, OwnerEntity.class); 
+		-> UNORDERED: 작업을 순서대로 하지않고, 가능한 한 많은 작업을 동시실행
+		
+- 프로퍼티 설정
+spring:
+  data:
+    mongodb:
+      database: <기본데이터베이스명>
+      authentication-database: <인증 데이터베이스명>
+      username: <접속아이디>
+      password: <접속비밀번호>
+      host: <MongoDB 호스트>
+      port: <MongoDB 포트>
+      uuid-representation: <UUID를 BSON으로 변환할 때 사용할 표현 방식>
+      replica-set-name: <replica set 이름>
+      field-naming-strategy: <필드 이름 변환 방식>
+      auto-index-creation: <인덱스 자동생성 여부>
+      ssl:
+        bundle: <ssl 접속을 위한 bundle 설정 이름>
+        enabled: <ssl 접속 사용 여부>
+
+
+파일업로드: 청크,메타데이터 저장 -> id return -> folder collection 에 id add
+
+- noSQL 데이터 모델링
+
+- 직렬화(encode): pojo -> document
+- 역직렬화(decode): document -> pojo 
+
+- 대용량 파일 업로드
+	- Stream 
+	- MultipartFile
+	- AWS Multipart
+	
+- Checksum
+	- 파일을 고유하게 식별하는 일련의 문자
+	- 파일이 한 저장장치에서 다른 저장장치로 전송 된 후에 무결성을 보장할 때 사용.
+	- 
+
+
+@ 명령어
+# show dbs
+# show Collections
+# use [db 명]: 해당 db 명으로 작업을 시작하겠다는 건데, 
+	만약 목록에 해당 db명이 없으면 생성과 동시에 작업시작임. 
+	근데 db 목록에는 안보임. collection 만들면 조회됨.
+
+# db.createCollection("[collection 명]") (collection명 지을 때 - 이거안들어가는게 좋을듯)
+# db.[collection 명].drop()
+# db.test0313.find() || db.test0313.find().pretty()
+# ctrl+l : 명령어 화면정리
+
+# use admin
+# db.createUser({user:"root",pwd:"1234",roles:['root']})
+
+- insert : 동일한 데이터가 있을 때 추가로 삽입
+- save : 동일한 데이터가 있을 때 덮어쓰기 
+
+## GridFS
+- 일반적으로 MongoDB에 저장할 수 있는 파일의 크기는 16MB 단위로 이루어진다.
+- 16MB이상은 GridFS를 사용한다.
+
+# mongofiles -d [db 명] put "[파일경로/파일명.확장자]"
+
+
+
+- 현재 비동기로 보내는게 더 빠름

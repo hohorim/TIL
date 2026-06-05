@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        //indexof, generator 이용해서 함수 있는 것 끝까지 출력하는 함수 만들기
+
+
+   function* f(str, num=str.length) {
+        let count = 0;
+        for (let p = 0; ; ++p) {
+            if (num < 0) break;
+            p = str.indexOf('b', p);
+            if (p === -1) break;
+            yield p;
+            count ++;
+            if (count === num) break;
+            // num 같은경우: 두번의 조건에 하나의 변수가 들어가면 소스정리가 필요한 경우임.
+        }
+    }
+
+    for (let s of f('bbbbbbbbba',4)) {
+        console.log(s);
+    }
+ 
+    // 실장님코드
+    // function* f(str, num) {
+    //     num ??= str.length;
+
+    //     for (let p = 0; 0 < num; ++p, --num) {
+    //         p = str.indexOf('b', p);
+    //         if (p === -1) break;
+    //         yield p;
+    //     }
+    // }
+
+    // for (let s of f('abababababab')) {
+    //     console.log(s);
+    // }
+
+
+    // 동작순서 예측하기 
+    async function* generateSequence(start, end) {
+
+        for (let i = start; i <= end; i++) {
+
+            // await를 사용할 수 있습니다!
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            yield i;
+        }
+
+    }
+
+    (async () => {
+
+        let generator = generateSequence(1, 5);
+        for await (let value of generator) {
+            alert(value); // 1, 2, 3, 4, 5
+        }
+
+    })();
+
+    </script>
+</body>
+</html>

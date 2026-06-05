@@ -1,0 +1,6 @@
+DDD: 
+	User Interface Layer == Presentation Layer
+	Application Layer
+	Domain Layer
+	Infrastructure Layer
+	

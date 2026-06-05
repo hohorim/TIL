@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+    <script>
+        window.a = 'w';
+
+        let o = {
+            a:'o',
+            p: {
+                a: 'op'
+            },
+            f: function() {
+                console.log(this.a);
+            },
+            af: ()=>{
+                console.log(this.a);
+            },
+            e: {
+                a:'oe',
+                f: function() {
+                    console.log(this.a);
+                },
+                af: ()=>{
+                    console.log(this.a);
+                },  
+            }
+        };
+
+        let p = {
+            a:'p'
+        };
+
+        p.f = o.f;
+        p.af = o.af;
+
+        p.f();
+        p.af();
+
+        o.p.f = o.e.f;
+        o.p.af = o.e.af;
+
+        o.p.f();
+        o.p.af();
+
+        o.p.cf = o.e.f.call(o.e);
+        o.p.caf = o.e.af.call(o.e);
+
+        p.cf = o.f.call(o);
+        p.caf = p.af.call(o);
+
+    
+    </script>
+
+</body>
+</html>

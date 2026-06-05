@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!--  프로미스(비동기와 동기)의 실행순서 -->
+    <script>
+        // 비동기: 함수 실행이 끝나는 것과 상관없이 순차적으로 실행됨.
+        // 동기: 함수 실행이 끝날 때까지 기다린 후 순차적으로 실행됨.
+      console.log(1);
+        let promise = new Promise(function (resolve, reject) {
+            console.log(2);
+            setTimeout(() => {
+                console.log(4);
+                resolve("promise 완료!");
+                console.log(5);         // 비동기로 실행됨. resolve 함수 실행이 끝나는 것과 상관없이 실행된 후 바로 순차적으로 실행됨.
+            }, 1000);
+            console.log(3)
+        });
+        console.log(6);
+
+        promise.then(
+            (result) => {
+                console.log(8);
+                console.log(result);
+            }, // 1초 후 "완료!"를 출력
+            (error) => {
+                console.log(9);
+                console.log(error);
+            }// 실행되지 않음
+        );
+        console.log(7);
+
+        /************************************************************/
+        class MyPromise {
+            #resolveThen;   // #은 private
+            #rejectThen;
+            #state="pendding";
+            #result;
+            constructor(f){
+                let resolve= (p)=>{ // function 으로 호출해주면 안됨(this 주체가 바뀜). 할거면 resolve.bind(this); 로 bind해줘야함.
+                    if(this.#state === "pendding"){
+                        this.#state = "fulfilled";
+                        this.#result = p;
+                        queueMicrotask(()=>{
+                            this.#resolveThen(p);
+                            
+                        });
+                    }
+               
+                    
+                } // 람다는 언제실행하든 주체가 고정으로 정해져있음. 
+                // function은 실행될 시점에 주체가 . 앞에 있는 애가 됨.
+                // 그래서 function 사용때 의 this의 주체는 window가 됨. resolve 호출할 때 . 앞에 아무것도 없기 때문임.
+
+                let reject= (p)=>{
+                    if(this.#state === "pendding"){
+                        this.#state = "rejected";
+                        this.#result = p;
+                        queueMicrotask(()=>{
+                            this.#rejectThen(p);
+                            
+                        });
+                    }
+                    
+                    // queueMicrotask : 항상 먼저 실행되는 애. 동기를 비동기로 바꿔줌.
+                }
+                f(resolve, reject);
+            }
+
+            then(resolve, reject){
+                this.#resolveThen = resolve;
+                this.#rejectThen = reject;
+            }
+        }
+
+        setTimeout(() => {
+            console.log('#######################')
+            console.log(11);
+
+            let myPromise = new MyPromise(function (resolve, reject) {
+                console.log(12);
+                setTimeout(() => {
+                    console.log(14);
+                    resolve("myPromise 완료!");
+                    console.log(15);        // 동기로 실행됨. resolve 함수 실행이 끝나고 실행됨. 그래서 비동기로 바꾸기 위해 queueMicrotask 사용
+                }, 1000);
+                console.log(13)
+            });
+            console.log(16);
+
+            myPromise.then(
+                (result) => {
+                    console.log(18);
+                    console.log(result);
+       
+                }, // 1초 후 "완료!"를 출력
+                (error) => {
+                    console.log(19);
+                    console.log(error);
+               
+                }// 실행되지 않음
+            );
+            console.log(17);
+
+        }, 2000);
+    </script>
+    
+</body>
+</html>

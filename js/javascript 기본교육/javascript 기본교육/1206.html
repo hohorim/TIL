@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // 동기와 비동기
+
+    getData('회원조회', function(data){
+        console.log(data);
+        if(data==='회원조회데이타') {
+            getData('상품조회', function(data){
+                console.log(data);
+                if(data==='상품조회데이타') {
+                    getData('쿠폰사용조회', function(data){
+                        console.log(data);
+                        if(data==='쿠폰사용데이타') {
+                            getData('결제조회', function(data){
+                                console.log(data);
+                            });
+                        } else {
+                            console.log('구매한 상품이 없습니다.');
+                        }
+                    });
+                } else {
+                    console.log('구매한 상품이 없습니다.');
+                }
+            });
+        }
+    });
+
+    function getData(work, callback) {
+        let data;
+        setTimeout(()=>{
+            console.log('#' + work + '중입니다.');
+            data = work + '데이타';
+            console.log('#' + work + '완료 되었습니다.');
+            callback(data);
+        }, 1000);
+        return data;
+    }
+
+    let asyncProc = [
+        {work: '회원조회', callback:function(){console.log('회원조회기능'); return true;}},
+        {work: '상품조회', callback:function(){console.log('상품조회기능'); return false;}},
+        {work: '쿠폰조회', callback:function(){console.log('쿠폰조회기능'); return true;}}
+    ];
+
+    function asyncFunc(asyncProc, getData) {
+        let f = function() {
+            let item = asyncProc.shift();
+
+            if(item) {
+                getData(item.work, (data)=>{
+                    if(item.callback(data)) f();
+                });
+            }
+        };
+
+        f();
+    }
+
+    asyncFunc(asyncProc, getData);
+        
+
+
+    </script>
+    
+</body>
+</html>

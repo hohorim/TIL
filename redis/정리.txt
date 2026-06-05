@@ -1,0 +1,165 @@
+- 고성능 key-value 구조의 저장소
+- 비정형 데이터 저장, 관하기 위한 오픈 소스 기반의 NoSQL
+- In memory 데이터구조를 가진 저장소
+	- In memory(인메모리): 
+		=> 컴퓨터의 주기억장치인 RAM에 데이터를 올려서 사용하는 방법
+		=> RAM에 데이터를 저장하게 되면 메모리 내부에서 처리하게 되므로 저장/조회 시 하드디스크를 오고가는 과정이 생략됨.
+		=> 속도가 매우 빠름
+		=> 서버의 메모리 용량을 초과하는 데이터를 처리하는 경우 데이터가 유실될 수 있음.(RAM - 휘발성)
+		
+- 인메모리로 인한 데이터 유실 방지를 위한 백업 기능 제공
+	1) AOF(append of file): Redis의 모든 write/update 연산 자체를 모두 로그파일에 기록하는 방식
+		명령에 대해 기록하기 때문에 파일 사이즈가 커서 서버 시작시 로딩속도가 느림.
+		용량이 특정 사이즈보다 크면 rewirte를 통해 사이즈를 줄임.
+		/etc/redis/redis.conf 에서 
+			appendonly: yes => aof 사용
+			appendfilename "파일이름" => aof 파일명 지정. path 지정불가능. path는 working directory에 따름
+			appendfsync ['always'|'everysec'|'no'] => aop에 기록하는 시점 설정.
+			auto-aof-rewrite-percentage 100 => aof rewrite 설정. aof 파일 사이즈가 100%이상 커지면 rewrite
+			auto-aof-rewrite-min-size 64mb => aof 파일 사이즈가 64mb 이하면 rewrite하지 않음. 0 이라면 rewrite를 하지 않음.
+	
+	2) RDB(shapshotting): 순간적으로 메모리에 있는 내용 전체를 디스크에 담아 영구 저장하는 방식
+		비교적 작은 사이즈의 파일로 서버 시작시 로딩속도가 빠름.
+		스냅샷을 통해 복원 및 저장. dump.rdb 에 저장됨 /var/lib/redis
+		
+	
+	둘 다 활성화가 되어있다면 redis 실행 시 RDB 파일을 읽어오지 않고, AOF 파일을 읽어옴.
+	
+- Redis Sentail 및 Redis Cluster 를 통한 자동 파티셔닝 기능 제공
+	- Master 와 Slave로 여러대의 복제본 
+	- 여러대의 서버로 읽기 확장
+	
+- 싱글 스레드
+
+- 고려할 사항
+	- 시간 복잡도 고려: 단 하나의 스레드가 모든 명령을 순차적으로 처리하기 때문에 대용량 데이터 처리로 인한 시간 지연 및 장애가 발생할 수 있음
+	- 메모리 단편화: 크고 작은 데이터를 할당하고 해제하는 과정에서 메모리의 파편화가 발생하여 응답속도가 느려질 수 있음.
+		- 정해진 메모리 용량안에서 크고 작은 데이터들을 RAM에서 할당받고 해제하는데, 그 과정에서 부분부분 빈 공간이 생기게 됨.
+			메모리 파편화가 심해지고, 새로운 메모리 할당 시 충분한 공간이 존재하지만, 딱 맞는 크기가 없어 마지막으로 할당한 공간 뒤에 처리하게 되어 메모리 낭비가 심함.
+		
+		- activeDefrag: redis4.0부터 사용가능하며, 위 메모리 단편화 같은 현상을 서버(redis)가동 중에 정리할 수 있는 기능
+			- 발동조건:
+			1) active-defrag-ignore-bytes: 설정값(default 100MB)
+				조각모음을 시작하기 위한 최소량. active-allocated 값이 설정값보다 작으면 하지 않음.
+			2) active-defrag-threshold-lower: 설정 값(default 10%)
+				조각모음을 시작할 최소 조각화 비율. active/allocated 값이 설정값보다 작으면 수행하지 않음.
+			3) mem_allocator
+				jemalloc 을 사용해야 하며 linux에서 redis 설치시 default임
+		
+- 캐싱전략
+	- 캐시 읽기 전략
+	1) Look Aside(Cache Aside) 패턴: 데이터를 찾을 때 캐시에 저장된 데이터가 있는지 우선적으로 확인하는 전략
+		- 서버에서 캐시에 우선적으로 조회. 데이터가 없으면 서버는 DB에서 조회하여 캐시에 저장
+		- cache hit, cache miss
+		- 데이터 정합성 문제. 캐시와 DB의 동일한 데이터에 대한 내용이 달라질 수 있음
+		- 반복적인 읽기가 많은 호출에 적합.
+	
+	2) Read Through 패턴: 캐시에서만 데이터를 읽어오는 전략
+		- 서버에서 캐시에 조회. 데이터가 없으면 캐시 Store 는 DB에서 조회하여 캐시에 저장
+		- 전체적으로 속도가 느림.
+		- 데이터 동기화는 캐시 제공자에게 위임하는 방식이라 항상 이루어져있어 데이터 정합성 문제에서 벗어남
+		- 읽기가 많은 워크로드에 적합
+		
+	- 캐시 쓰기 전략
+	1) Write Back(Write Behind) 패턴: 데이터 저장 시 캐시에 모아서 일정 주기 배치 작업을 통해 DB에 반영하는 전략
+		- 서버에서 모든 데이터를 캐시에 저장. 스케쥴링을 통해 캐시는 일정시간마다 DB에 저장
+	
+	2) Write Through 패턴: DB와 캐시 동시에 데이터를 저장하는 전략
+		- 데이터 저장시 서버는 캐시에 먼저 저장한 다음 캐시에서는 바로 DB에 저장
+		- 데이터 일관성 유지
+		
+	3) Write Around 패턴: 모든 데이터는 DB에 저장. 캐시를 갱신하지 않음. 
+		- cache miss(캐시 조회 시 데이터가 없을 경우)가 발생하는 경우에만 DB와 캐시에도 저장.
+		- 속도가 빠르지만 데이터 불일치 발생
+
+
+- 로드 밸런서를 사용한 분산 환경 시스템에서 Session이 공유가 되지 않아 발생하는 문제점 해결방법
+	- ex. msa 구조의 여러 서비스에서는 같은 session 을 가지고 동작해야함.
+	1) Sticky Session: 로드 밸런서의 설정을 통해 사용자의 요청이 처음 session을 저장한 서버로만 가도록 설정.
+		문제점: 한 서버에 트래픽이 몰릴 수 있어 로드밸런싱을 하는 의미가 퇴색됨. 특정 서버에 장애가 발생한다면 해당 서버에 존재한 세션이 모두 사라짐.
+	2) Session Clustering: 여러 WAS의 Session이 모두 공유되도록 하는 방법. 
+		하나에 서버에 session이 생상되면 나머지 모든 서버의 session 저장소에도 같은 session을 생성하는 방식
+		문제점: 서버 갯수가 많아진다면 session이 생성될 때마다 모든 서버에 session을 생성해야하기 때문에 서버의 메모리 부하가 커짐.
+		
+		- 해결: Redis Session Clustering - 모든 서버가 같은 Redis session 저장소를 바라보는 방법. 외부로 session 저장소를 분리
+			RDB는 디스크 I/O 작업이 많으면 메모리 부하가 커지는 반면, Redis 는 In-memory 기반으로 I/O 작업을 하지 않아서 메모리 낭비를 줄일 수 있음.
+	
+- spring-boot-starter-data-redis 는 순수 Redis Client인 Lettuce를 의존성에 추가함.
+	순수 Redis Client 중 Lettuce 와 Jedis 가 존재하는데
+	- Jedis 는 멀티스레드 환경에서 안전하지 않음
+	- Lettuce는 Netty 기반환경으로 비동기 지원
+	- Jedis는 멀티쓰레드 환경에서 pooling 연결 방식
+	- 멀티 쓰레드 환경에서 하나의 인스턴스를 공유 하고 싶을 때 jedis는 쓰레드 안정성을 보장하지 않는다.	
+	- Jedis를 사용하는 각 동시성을 지닌 스레드는 Jedis가 상호작용하는 동안 자체 Jedis 인스턴스를 가져와, Redis 연결을 증가, 물리적 연결비용 발생
+	- Lettuce는 netty 기반으로 멀티 쓰레드 환경에서 상태를 가지고 공유될 수 있기 때문에, 쓰레드 개수와 상관없이 하나의 연결만 사용.	
+	- Lettuce 가 Jedis보다 거의 모든 측면에서 우수
+	
+	
+ proxy - service interceptor - auth library - auth aop - service aop - service controller
+
+		
+- BIM
+	1. 로그인 시 DB를 반드시 [팀 참여 데이터] 조회해야함
+	2. 페이지 이동 시 반드시 [팀 참여 데이터] 조회해야함
+	3. 팀원 권한변경 시 [팀 참여 데이터] 수정 및 조회해야함
+	Read Through & Write Through
+	
+	- 로그인 할 때 세션 발급 => 세션 발급용 resolver 만들어서 account에 override
+	- 현재 annotaion 을 공통 auth에 빼서 참여자/프로젝트매니저/팀매니저 등 권한 관리
+	- auth aop 에서 annotation 을 통해 인가
+	- annotation 세션 재발급 신규추가. 권한변경 controller에 붙이기
+	- 세션만료되면  account에 넣기 -> redis에서 빼올수잇다.
+	
+	- account service, auth library
+	
+	
+- redis 하나의 아이템은 key, value 모두 512mb 의 사이즈로 데이터를 만들 수 있다.
+	
+- redis session spring
+
+	- propreties
+	spring.main.allow-bean-definition-overriding=true
+	spring.session.store-type=redis  # @EnableRedisHttpSession 설정과 같음
+	spring.session.redis.namespace:project:session
+	spring.data.redis.host=172.17.104.45
+	spring.data.redis.port=6379
+
+	위 설정시 Filter 를 구현한 springSessionRepositoryFilter의 이름을 가진 스프링 빈이 자동 생성됨.
+	
+	- config
+	key, value 직렬화 시 GenericJackson2JsonRedisSerializer() 는 모든 타입을 직렬화 하지만, 
+	해당 패키지와 클래스 타입 전체를 저장하여 해당 패키지 dto가 아닐시 key값을 조회할 수 없음
+	그래서 StringRedisSerializer() 쓰거나 해당 타입에 맞는 직렬화객체를 쓰는게 맞을듯.
+	
+
+
+- redis cache 만료/삭제 정책
+	- 크게 두가지로 나뉨
+		1. 주기적으로 만료시간이 설정된 일부 키를 임의로 선택하여 만료가 되었으면 삭제
+			- redis에 저장된 모든 키를 확인할 경우 CPU 부하되기 때문에 임의로 선택함.
+		2. 만료된 데이터에 접근 시 삭제
+		
+		이러한 노력에도 불구하고 메모리가 누적되어 고갈되 수 있는 상황을 대비하여 eviction 정책 따름
+		- /etc/redis/redis.conf 에 "maxmemory-policy" 설정.
+		- 현재 테스트에서는 [allkeys-lru: 가장 최근에 사용되지 않은 키를 삭제한다. ] 를 사용
+
+- event notification
+	- 레디스는 레디스들 간의 메시지 통신을 위해(publish/subscribe) 기능 제공
+	- 레디스들은 Channel 이라는 통로에서 publish/subscribe 기능으로 메시지를 주고받음.
+	
+	- redis.conf 파일에서 아래와 같은 이벤트기능을 제공
+	1) 키(데이터) 입력/변경 : set 같은 명령으로 키/값이 새로 입력되거나 수정될 때
+	2) 키 삭제 : del 같은 명령으로 키가 삭제될 때
+	3) 키 만료 시간 설정으로 키가 삭제될 때
+	4) Maxmemory 정책으로 키가 퇴출(eviction)될 때
+
+	- Channel 유형
+	1) 키 중심: 이벤트 발생 시 이벤트 이름 반환  __keyspace@<dbid>__:key command
+		- 특정 키(topic)에 대해 구독한 상태에서 해당 키(topic)에 대해 event 발생시 메시지 구독
+	2) 명령 중심: 이벤트 발생 시 키 반환  __keyevent@<dbid>__:command key
+		- 특정 이벤트(키 만료, 키 발행 등)에 대해 구독한 상태에서 해당 이벤트 발생시 key 값 구독
+
+
+- database
+	redis 도 database 개념 존재 config파일에서 갯수 설정가능
+	원하는 database 프롬포트 접속 명령은 # redis-cli -n [database 인덱스 번호] 혹은 redis 프롬포트 cli창에서 #>select [database 인덱스번호] 하면 변경됨

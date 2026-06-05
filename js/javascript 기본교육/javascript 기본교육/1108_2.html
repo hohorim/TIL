@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=<device-width>, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // map 기능 구현 2
+           function MyMap(size) {
+            this.data = [];
+            this.maxSize = (!size || size < 0) ? 16 : size;
+            this.size = 0;
+            this.length = 0;
+        }
+
+        MyMap.prototype.set = function (key, value) {
+            if (this.size < this.maxSize) {
+                this._set(this.data, key, value);
+            } else {
+                this._extendData();
+                this._set(this.data, key, value);
+            }
+        }
+
+        MyMap.prototype._set = function (tempData, key, value) {
+            let obj = this._has(tempData, key);
+
+            if (obj.target) {
+                obj.target.value = value;
+            } else {
+                if (!tempData[obj.hashCode]) {
+                    tempData[obj.hashCode] = [];
+                    ++this.size;
+                }
+
+                tempData[obj.hashCode].push({
+                    key,
+                    value
+                });
+
+                ++this.length;
+            }
+        }
+
+        MyMap.prototype._extendData = function () {
+            let extendedData = [];
+            this.maxSize *= 2;
+            this.size = 0;
+            this.length = 0;
+
+            this.data.forEach(e => {
+                e?.forEach(ie => {
+                    this._set(extendedData, ie.key, ie.value);
+                });
+            });
+
+            this.data = extendedData;
+        }
+
+        MyMap.prototype.get = function (key) {
+            return this._has(key).target?.value;
+        }
+
+        MyMap.prototype.remove = function (key) {
+            let obj = this._has(this.data, key);
+            obj.targetOwner.splice(obj.targetIndex, 1);
+        }
+
+        MyMap.prototype[Symbol.iterator] = function () {
+            console.log('iterator');
+            return {
+                dataArray: this.data,
+                mainIndex: 0,
+                subIndex: 0,
+                next() {
+                    while (this.mainIndex < this.dataArray.length) {
+                        if (0 < this.dataArray[this.mainIndex]?.length) {
+                            let data = this.dataArray[this.mainIndex][this.subIndex];
+
+                            if (data) {
+                                ++this.subIndex;
+
+                                return {
+                                    done: false,
+                                    value: {
+                                        key: data.key,
+                                        value: data.value
+                                    }
+                                };
+                            } else {
+                                ++this.mainIndex;
+                                this.subIndex = 0;
+                            }
+                        } else {
+                            ++this.mainIndex;
+                        }
+                    }
+
+                    return { done: true };
+                }
+            };
+        }
+
+        MyMap.prototype._has = function (tempData, key) {
+            let hashCode = this.hashKey(key);
+            let result = {
+                hashCode,
+                target: undefined,
+                targetOwner: undefined,
+                targetIndex: undefined
+            };
+
+            tempData[hashCode]?.forEach((e, i, array) => {
+                if (e.key === key) {
+                    result.target = e;
+                    result.targetIndex = i;
+                    result.targetOwner = array;
+
+                    //--this.length;
+                }
+            });
+
+            return result;
+        }
+
+        MyMap.prototype.has = function (key) {
+            return this._has(key) !== undefined;
+        }
+
+        MyMap.prototype.hashKey = function (key) {
+            let sum = 0;
+
+            for (let c of key) {
+                sum += c.charCodeAt();
+            }
+
+            return sum % this.maxSize;
+        }
+
+        let m = new MyMap(128);
+        m.set('abc', 'abcData');
+        m.set('acb', 'acbData');
+        m.set('abcd', 'abcdData');
+        m.set('1abc', '1abcData');
+        m.set('a2bcd', 'a2bcdData');
+        m.set('ab3Zc', 'ab3ZcData');
+        m.set('abc8d', 'abc8dData');
+    </script>
+</body>
+</html>

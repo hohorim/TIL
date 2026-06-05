@@ -1,0 +1,12 @@
+- Docker Buildx: Docker의 공식적인 멀티 플랫폼 빌드 도구
+	동일한 Dockerfile 로 여러 아키텍처나 운영 체제에 대한 이미지 빌드 가능
+	즉, 다양한 환경에서 동일한 애플리케이션을 실행하거나 배포할 때 유용
+
+	개발자 중 Mac 이나 이러한 환경이 다른 사람도 이미지를 사용할 수 있도록 환경을 셋팅해주는거임.
+	그래서
+	
+	docker buildx build --platform linux/amd64,linux/arm64 -f ./docker/base/Dockerfile -t test .
+	platform 에 환경셋팅할 값을 넣어주고, 이미지를 올리고(올릴 땐 위 명령어에 --push 추가)
+	해당 이미지를 가져올 때 플랫폼에 맞는 이미지만 가져옴. M1/M2 Mac에서는 pull 시 ARM64컨테이너 이미지를 가져오고, Intel 에서는 pull 시 x86_64 컨테이너 이미지를 가져옴
+
+# arch : 해당 작업환경(뭐 PC, VM  등) 의 시스템의 아키텍처 정보

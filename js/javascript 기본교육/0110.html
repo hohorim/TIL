@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // 뼈대 잡기
+
+        class TodoList{
+            #todoList = [];
+            static #idx = 0; // static 으로 만들어야 인스턴스에서 건들일 수가 없음.
+            constructor(f) {
+
+
+            }
+
+            getList (){
+                console.log(this.#todoList);
+
+            }
+
+            updateTodo (idx, content){
+                let todo = this.#todoList.find(x=>x.idx === idx);
+                if(!todo){
+                    todo.content = content;
+                }
+
+
+            }
+
+            createTodo (content){
+                let todo = {
+                    idx: 0,
+                    content: '',
+                    useYn: '',
+                    createDateTime: '',
+
+                };
+                todo.idx = ++this.#idx;
+                todo.content = content;
+                todo.useYn = 'Y';
+                todo.createDateTime = new Date().toLocaleDateString();
+
+                this.#todoList.push(todo);
+                
+                
+            }
+
+            updateUse() {
+
+            }
+
+        }
+
+        let todoList = new TodoList();
+        
+  
+
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // Hoisting: 인터프리터가 변수, 함수를 메모리공간을 선언 전에 미리 할당하는 것.
+        // hoisting 은 초기화를 제외한 선언만 호이스팅함.
+        // var 선언 시 undefined 으로 초기화됨.
+        // 그래서 먼저 선언 초기화 하지 않아도 선언 전에 호출할 수 있음.
+        // let, const 는 선언만 한다면 선언상태로만 메모리에 올라감. 그래서 참조에러가 일어남.
+        
+        console.log(v1);    //undefined
+
+        try{
+            console.log(l1);
+        }catch(ex){
+            console.log("l1 error")
+        }
+
+        try{
+            console.log(c1);
+        }catch(ex){
+            console.log("c1 error")
+        }
+        
+        var v1;
+        let l1;
+        const c1=undefined;
+        v1 = 1;
+        console.log(v1);    // 1
+    
+        // * POJO: 다른(환경, 기술) 것에 종속적이지 않은 get 과 set 으로만 이루어져있는, 재활용될 수 있는 객체.
+        // 다른 내용이지만 일단 적어둠.
+    </script>
+    
+</body>
+</html>

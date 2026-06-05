@@ -1,0 +1,21 @@
+services:
+  nginx:
+    image: nginx
+    ports:
+      - 8081:80 # 8081 포트만 open되어 있는 상태니..임시로 8081로 받아야함
+    volumes:
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+    container_name: nginx
+    networks:
+      - gateway-network
+  gateway:
+    image: gateway-image
+    expose:
+      - 8085 # gateway 8081 말고 808x 로 다시 말아서 이미지빌드
+    container_name: gateway-container
+    networks:
+      - gateway-network
+
+networks:
+  gateway-network:
+    driver: bridge

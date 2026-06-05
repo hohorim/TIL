@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+    <script>
+         
+         // 객체
+        let queue = {
+            fi:0,
+            fo:0,
+            list : new Array(6),
+            pop(){
+                if(queue.fo === queue.list.length) queue.fo =0;
+                if(queue.list[queue.fo]) delete queue.list[queue.fo++];
+            },
+            add(n){
+                if(queue.fi === queue.list.length) queue.fi =0;
+                if(!queue.list[queue.fi]) queue.list[queue.fi++] = n;
+            }
+        }
+
+        // prototype
+        // 변수 이름
+        function Queue (){
+            this.fi=0;
+            this.fo=0;
+            this.list = new Array(6);
+        }
+
+        Queue.prototype.add=function(n){
+            if (this.fi === this.list.length) this.fi = 0;
+            if (!this.list[this.fi]) this.list[this.fi++] = n;
+            return this.list;
+        }
+
+        Queue.prototype.pop=function(){
+            if (this.fo === this.list.length) this.fo = 0;
+            if (this.list[this.fo]) delete this.list[this.fo++];
+            return this.list;
+        }
+
+        let q = new Queue();
+
+    </script>
+
+</body>
+</html>

@@ -16,6 +16,11 @@ ssh horim@172.17.104.45
 	#> wsl -l -v
 	#> whoami
 	
+@ ssh 접속을 root 로 할 수 있게끔 허용
+	# su 일반계정으로 접속후 root 계정 접속 
+	# vi /etc/ssh/sshd_config 에서 PermitRootLogin yes 로 수정
+	# service ssh restart
+	
 4. wsl2 로 리눅스 커널 업데이트
 	https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi 설치
 	#> wsl --set-version Ubuntu-22.04 2

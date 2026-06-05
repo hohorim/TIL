@@ -1,0 +1,47 @@
+## 1. build.gradle
+// Javadoc 생성 설정
+javadoc {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.author = true
+    options.version = true
+    options.use = true
+    options.windowTitle = "SYDP Auth Library API Documentation"
+    options.docTitle = "SYDP Auth Library API Documentation"
+    
+    // 한글 문서화를 위한 추가 설정
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+// Javadoc JAR 생성 task
+task javadocJar(type: Jar) {
+    archiveClassifier = 'javadoc'
+    from javadoc
+}
+
+// Sources JAR 생성 task (선택사항)
+task sourcesJar(type: Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+// 빌드 시 Javadoc과 Sources JAR 포함
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+## 2. class 에 javadoc 주석 추가
+
+## 3.쉘
+# Javadoc 생성
+./gradlew javadoc
+
+# Javadoc JAR 생성
+./gradlew javadocJar
+
+# 모든 JAR (main, sources, javadoc) 생성
+./gradlew build
+
+# 또는 특정 task만 실행
+./gradlew clean build javadocJar sourcesJar

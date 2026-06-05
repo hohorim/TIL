@@ -1,0 +1,32 @@
+- root 프로젝트에 라이브러리 동시 개발 및 디버깅 방법
+
+- vscode ide
+- gradle
+- 멀티모듈과 composite build 중 멀티모듈 채택
+	..composite build 에러못잡고.. 시간이 없어서 못함
+
+개념 요약
+구분					멀티모듈(Multi-Module)				컴포지트 빌드(Composite Build)
+구조					하나의 Gradle 빌드 안에 서브프로젝트 포함	서로 독립적인 별도 빌드(프로젝트)들을 임시로 연결
+설정					settings.gradle: include		settings.gradle: includeBuild
+출처					동일 캐시/빌드 라이프사이클				각 빌드는 독립, 의존성 치환(substitution)으로 연결
+사용 목적				논리적 하나의 시스템, 공통 버전·플러그인 공유	외부/별도 저장소 라이브러리 개발 병행
+퍼블리시 필요			내부 참조라 불필요						독립 배포 흐름 유지 가능
+IDE 체감				한 프로젝트로 보임						여러 루트(참조는 연결)
+빌드 격리				낮음(전역 task 영향)					높음(각자 빌드 스크립트 유지)
+변경 반영				즉시(그대로 재컴파일)					즉시(치환), 원래는 원격 아티팩트 대체
+경로 중첩 (:a:b)		지원								별도 빌드라 필요 없음
+
+
+1. root project 에 라이브러리를 작업영억에 넣는다. 
+	단 라이브러리리 바로 밑에 build.gradle, src/main 구조가 존재해야한다.
+	
+2. root project
+	- settings.gradle 설정 추가:
+		include ':cone-auth-lib-v1:lib'
+		project(':cone-auth-lib-v1:lib').projectDir = file('D:/msp/cone-auth-lib-v1/lib')
+		
+	- build.gradle 설정 변경:
+		implementation project(':cone-auth-lib-v1:lib')
+		
+이렇게 처리하면 lib jar 로 안묶어도 실행가능하고 라이브러리도 동시에 작업이 가능하다.

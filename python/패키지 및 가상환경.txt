@@ -1,0 +1,75 @@
+- pip: 파이썬 자체 패키지 관리 도구(자바의 Maven, JS의 npm 과 같은)
+- virtualenv: 프로젝트별로 고립된 개발환경을 구축하기 위한 가상환경 패키지 관리 도구
+	프로젝트마다 파이썬 버전이 다를 경우 파이썬을 삭제했다가 설치하는 불필요한 과정없이 가상환경을 프로젝트별로 두어서 다른 버전의 파이썬 프로젝트를 개발가능하도록 함.
+	
+	
+- pipenv: 패키지를 프로젝트 단위로 관리할 수 있도록 도와주는 고급 패키지 관리도구. 프로젝트별로 격리된 가상환경과 프로젝트 단위의 패키지 관리 메커니즘 제공
+	pip와 virtualenv가 합쳐진 관리 도구. pip와 virtualenv를 따로 쓸 필요없이 pipenv 명령어로 해결가능
+	
+# pipenv --python [버전] : 해당 버전의 파이썬 환경을 가진 가상환경 생성, 디렉토리에 Pipfile 생성. 
+	로컬 PC에 해당 버전의 파이썬이 이미 설치가 되어있어야 가능함. 그렇지 않으면 에러발생.
+	이때 루트 디렉토리에 requirements.txt 가 있으면 정의된 패키지도 같이 작성됨. 단 Pipfile에 정의만 되어있는 상태이며, 아직 설치는 되어있지 않음.
+	
+- Pipfile은 프로젝트의 메타정보가 저장됨. pipenv가 프로젝트 내 의존성 패키지 목록을 관리하기 위해 생성하는 파일
+
+# pipenv shell : 프로젝트 가상환경 활성화
+# pipenv install [패키지명](==[버전]) : 패키지 설치. 설치가 되면 Pipfile.lock 파일 생성/업데이트 
+	ex) pipenv install pydantic==1.10.13
+# pipenv uninstall [패키지명] : 패키지 제거. 제거가 되면 Pipfile.lock 생성/업데이트
+# pipenv --py : pipenv가 사용중인 python 파일 위치
+# pipenv --venv : pipenv가 생성한 가상환경 위치
+# python -m site --user-site : python 에서 생성한 패키지 저장 위치
+# pipenv --rm : 가상환경 제거
+
+- 가상환경 위치 변경
+	# mkdir .venv : 기존 가상환경 경로를 해당 위치로 변경하기 위한 폴더생성
+		기존에 만든 가상환경이 있다면 삭제하고 다시 생성
+		그럼 해당 위치에 가상환경이 만들어져있을거임.
+	# pipenv --venv : 확인
+
+- 가상환경 활성화 없이 바로 실행
+	# pipenv run python
+	# pipenv run python test.py
+
+- 글로벌에 설치된 패키지 모두 삭제
+	# pip freeze > requirements.txt : 글로벌에 설치된 패키지 버전 명세파일 추출
+
+	# pip uninstall -r reuiqrements.txt -y : 해당 파일로 모조리 삭제
+	
+	# pip install -r requirements.txt : 해당 파일로 모두 설치
+	
+- 기존 프로젝트 패키지 설치방법
+	# pipenv install : Pipfile 에 기록된 의존성을 토대로 패키지 설치. (호환버전 설치)
+	# pipenv sync : Pipfile.lock 에 지정된 패키지 버전을 그대로 설치. (완전 동일하게 설치)
+	
+	# pipenv install --dev : dev 패키지는 따로 옵션을 걸어줘야 Pipfile 에 명시된 패키지가 설치됨
+	
+	- Pipfile 없이 패키지명만 있다면 requirements.txt 파일 만들고, 아니라면 pipenv install [패키지명] 으로 일일히 설치하거나 해야함
+	# pipenv install -r requirements.txt 
+	
+# pipenv requirements  > requirements.txt : 프로젝트에 대해 피키지 버전 명세파일 추출
+	
+	
+- uvicorn
+	# uvicorn --host 0.0.0.0 --port 8000 --limit-concurrency 10 --workers 2 api:gateway --reload
+	
+	api: 파일 or 폴더(폴더일 때는 폴더 하위의 __init__.py 를 바라봄)
+	gateway: 해당 파일에서 FastAPI() 변수 이름
+	--reload: 개발용으로 파일 수정 시 자동으로 restart
+	
+
+
+
+
+- pyenv : 하나의 OS에 여러 파이썬 버전이 필요할 때, 필요에 따라 local에 적용되는 파이썬 버전을 변경시켜주는 것.
+	
+# pyenv install [버전]: 특정 파이썬 버전 설치
+	원하는 버전의 파이썬이 로컬에 설치되어있지 않아도 설치와 동시에 적용
+	
+# pyenv versions : 설치된 파이썬 버전 목록
+
+# pyenv global [버전] : 해당 버전을 기본으로 설정
+
+
+
+즉, 가상환경을 활성화해서 프로젝트별로 패키지와 버전들을 알맞는 버전으로 따로 실행시킬 수 있음

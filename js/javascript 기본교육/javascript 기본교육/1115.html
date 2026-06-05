@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=<device-width>, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // 재귀와 스택
+        // pringObject
+
+        let company = {
+            room: [
+                {
+                    name: '회의실1',
+                    limit: 11
+                }, {
+                    name: '회의실2',
+                    limit: 6
+                }
+            ],
+            user: [
+                {
+                    name: '강희성',
+                    family: [
+                        {
+                            name: '와이프'
+                        },
+                        {
+                            name: '아들1'
+                        }
+                    ]
+                }, {
+                    name: '강희성2'                    
+                }, {
+                    name: '강희성3'                    
+                }
+            ]
+        }
+
+        
+        function test(obj){
+            
+            for(let i of Object.keys(obj)){
+                if(typeof obj[i] === 'object'){
+                    test(obj[i]);
+                }else{
+                    // let str = ''.padStart(cont, '-');
+                    console.log(obj[i]);
+                }
+            }
+        }
+
+        // test(company);
+        
+        // 아래 이사님 코드
+        Object.prototype.forEach = function(callback) {
+            for(let key of Object.keys(this)){
+                callback(this[key], key, this);
+            }
+        }
+
+        function printObject(parent, depth) {
+            ++depth;
+            if(Array.isArray(parent)) {
+                parent.forEach(e=>printObject(e, depth));
+            } else if (typeof parent === 'object') {
+                parent.forEach(e=>printObject(e, depth));
+            } else {
+                console.log(''.padStart(depth*2, '-'), parent);
+            }
+        }
+    
+        //printObject(company, 0);    
+        
+        function htmlObject(parent, depth) {
+            let html = '';
+
+            ++depth;
+
+            if(Array.isArray(parent)) {
+                html = '<ul>';
+                parent.forEach(e=>{
+                    html += `<li>${htmlObject(e, depth)}</li>`;
+                });
+                html += '</ul>';
+            } else if (typeof parent === 'object') {
+                html = '<ul>';
+                parent.forEach(e=>{
+                    html += `<li>${htmlObject(e, depth)}</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html = `${parent}`;
+            }
+
+            return html;
+        }
+
+        let html = htmlObject(company, 0);
+
+        document.getElementById('tree').innerHTML = html;
+
+
+    </script>
+</body>
+</html>

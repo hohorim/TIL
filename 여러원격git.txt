@@ -1,0 +1,5 @@
+# git log --oneline origin/main : push 로그확인                                                                             
+# git log --oneline gitea/main
+
+# git push gitea main: 개별로 push
+# git push all main : 한번에 push

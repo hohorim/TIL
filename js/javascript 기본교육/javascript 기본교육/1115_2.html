@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=<device-width>, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+    // 팀 이름, 팀 안에 유저이름, 유저 봉급 등
+    // 과제: 모든 팀별 합계가 나와야함. 재귀로. 탐명도 찍히고 금액도 찍히는. 하위부서 표시
+
+    let team = {
+            name: '인재inc',
+            users: [
+                {user: '대표님',amount: 10000,}
+            ],
+            teams: [
+                {
+                    name: '기술지원실',
+                    users: [
+                        {user: '강희성',amount: 20000,}
+                    ],
+                    teams: [
+                        {
+                            name: 'UI개발팀',
+                            users: [
+                                {user: '강희성',amount: 30000,},
+                                {user: '강희성',amount: 40000,}
+                            ],
+                            teams: [
+                                {
+                                    name: 'UI개발2팀',
+                                    users: [
+                                        {user: '강희성',amount: 30000,},
+                                        {user: '강희성',amount: 10000,}
+                                    ],
+                                    teams: [
+
+                                    ]
+                                },
+                            ]
+                        },
+                        {
+                            name: '기술지원팀',
+                            users: [
+                                {user: '강희성',amount: 50000,}
+                            ],
+                            teams: [
+
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: 'C&P사업실',
+                    users: [
+                        {user: '강희성',amount: 20000,},{user: '강희성',amount: 30000,}
+                    ],
+                    teams: [
+                        {
+                            name: 'C&P개발1팀',
+                            users: [
+                                {user: '강희성',amount: 30000,},
+                                {user: '강희성',amount: 40000,}
+                            ],
+                            teams: [
+
+                            ]
+                        },
+                        {
+                            name: 'C&P개발2팀',
+                            users: [
+                                {user: '강희성',amount: 50000,}
+                            ],
+                            teams: [
+
+                            ]
+                        },
+                        {
+                            name: 'C&P구축팀',
+                            users: [
+                                {user: '강희성',amount: 50000,},{user: '강희성',amount: 60000,},{user: '강희성',amount: 70000,}
+                            ],
+                            teams: [
+
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+        //depth 를 매개변수로 받자. dt를 전역변수로 빼주는 건 재귀의 의미가 없음.
+    let result = [];
+    let dt = 0;
+    let all = 0;
+    function injeINC(obj){
+        result.push({name:obj['name'], total: 0, all:0, depth:dt});
+        
+        obj['users'].forEach(e => {
+            result.find(x=>x.name === obj['name']).total += e.amount;
+            result.find(x=>x.name === obj['name']).all += e.amount;
+        });
+        dt++;
+        obj['teams'].forEach(e =>{
+            injeINC(e);
+            result.find(x=>x.name === obj['name']).all += all;
+        });
+        
+        all = result.find(x=>x.name === obj['name']).all;
+        dt--;
+    }
+
+    function printInje(obj){
+        console.log(`팀명 | 팀별 총계 | 하위부서 누적계`);
+        for(let i=0; i<obj.length; i++){
+            console.log(''.padStart(obj[i].depth*2, ` `) + ' ' + obj[i].name + ' | ' 
+                                                            + obj[i].total + '원' + ' | '
+                                                            + obj[i].all + '원');
+        }
+    }
+
+    injeINC(team);
+    printInje(result);
+
+    // 이사님 코드
+
+    function sum(team, parent, depth) {
+        let teamAmount = {
+            name: team.name,
+            parent: parent,
+            total: 0,
+            all: 0,
+            depth
+        };
+
+        result.push(teamAmount);
+
+        team.users.forEach(user=>teamAmount.total += user.amount);
+        team.teams.forEach(team=>teamAmount.all += sum(team, teamAmount.name, depth+1));
+
+        teamAmount.all += teamAmount.total;
+
+        return teamAmount.all;
+    }
+
+    sum(team, '', 0);
+
+    </script>
+</body>
+</html>

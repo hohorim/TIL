@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=<device-width>, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+    
+    // 일반 prototype 등 객체 밖에서 선언하면 사용자 입장에서 전부 보이게 됨
+    // 아래형식으로 작성하게 되면 사용자가 확인할 수 없도록 만들 수 있고
+    // forEach 문을 만들어 forEach를 사용할 수 있도록 만들어 주는 것도
+    function PrivateStack() {   
+        let store = [];
+        let index = 0;
+        
+        this.push = function (value) {
+            store[index++] = value;
+        };
+
+        this.pop = function () {
+            if (0 < index) {
+                let value = store[--index];
+                store[index] = undefined;
+                return value;
+            } else {
+                throw Error('빔');
+            }
+        };
+
+        this.forEach = function(callback) {
+            store.forEach((e, index)=>callback({value:e, index:index}));
+        }
+
+        this.printStore = function() {
+            store.forEach(e=>console.log(e));                
+        }
+
+        this[Symbol.iterator] = function() {
+            return {
+                store: store,
+                current: 0,
+                next() {
+                if (this.current < this.store.length) {
+                    let index = this.current++;
+
+                    return { 
+                        done: false, 
+                        value: {
+                            value: this.store[index],
+                            index: index
+                        }
+                    };
+                } else {
+                    return { done: true };
+                }
+                }
+            }
+        }
+    }
+
+    let ps = new PrivateStack();
+
+    ps.push(1);
+    ps.push(2);
+    ps.push(3);
+
+
+    Object.prototype[Symbol.iterator] = function() {
+        return {
+            obj: this,
+            keys: Object.keys(this),
+            current: 0,
+            next() {
+            if (this.current < this.keys.length) {
+                let index = this.current++;
+                return { 
+                    done: false, 
+                    value: {
+                        key: this.keys[index],
+                        value: this.obj[this.keys[index]]
+                    }
+                }
+            } else {
+                return { done: true };
+            }
+            }
+        };   
+    }
+    
+    </script>
+</body>
+</html>

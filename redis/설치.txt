@@ -1,0 +1,74 @@
+서버환경은 내pc 로컬위에 있는 가상 ubuntu(172.17.104.45)
+redis 비번 1234
+
+
+# sudo apt-get update
+# sudo apt install redis-server
+# sudo vi /etc/redis/redis.conf: 환경설정
+# sudo systemctl restart redis-server.service
+
+# redis-cli -a [비번]: 내부에서 접속
+# redis-cli -h [접근 서버 IP] -p [레디스 실행 프로세스 포트] -a [비밀번호]: 외부에서 접속
+	- 외부의 접속(다른 호스트의 클라이언트를 redis 연결)을 위해 conf 파일에서 protected-mode no 로 바꿈.
+
+- 캐시 삭제 시 java event listener 설정. 
+	redis.conf 에서 notify-keyspace-events "Ex" 로 설정. 재시작
+	- 캐시 ttl이 0 이 될 때 발행되는 것이 아닌 redis 서버가 캐시를 삭제할 떄 발행됨.
+	- 근데 안해도("" 로 설정해도) 가능함 => 라고는 하는데 설정안하니까 정상작동이 안되서 "Ex" 설정 넣음.
+	- Ex 설정은 성능적 오버헤드가 발생할수 도 있음
+	
+
+# config get requirepass: 접속 비번 확인
+# config set requirepass [password]: password 설정
+# AUTH "[password]": 비번 입력
+
+
+- 패키지 삭제방법 ubuntu
+# dpkg --list | grep [package_name]: 패키지 확인
+# dpkg --purge [package_name]: 패키지 삭제
+
+# journalctl -b -u redis-server: 에러 로그
+# cat /var/log/redis/redis-server.log: 에러 로그
+
+- system service fail인데 안사라질 떄
+systemctl stop [servicename]
+systemctl disable [servicename]
+rm /etc/systemd/system/[servicename]
+rm /etc/systemd/system/[servicename] # and symlinks that might be related
+rm /usr/lib/systemd/system/[servicename] 
+rm /usr/lib/systemd/system/[servicename] # and symlinks that might be related
+systemctl daemon-reload
+systemctl reset-failed
+
+- docker로 redis 실행
+	# docker run -p 6379:6379 --name redis-container -d redis:latest --requirepass "1234"
+	# docker exec -it redis-container redis-cli -a "1234": 해당 컨테이너에서 실행되는 redis system cli 접속
+	# docker exec -it redis /bin/bash: 해당 컨테이너 cli 접속
+
+	# docker run -i -t ubuntu
+	
+- 백업 AOF vs RDB
+
+	1) RDB
+		redis shell # config get save: 스냅샷 조건 확인
+			1) "save" 
+			2) "3600 1 300 100 60 10000" # 3600초 안에 1개 이상의 데이터가 변경 되면 저장. 300초 안에 100개이상의 데이터가 ~~
+		reids shell # info persistence
+		redis shell # save | bgsave : 수동저장
+		
+		
+- config 설정
+# redis-cli config set notify-keyspace-events AKE
+
+- benchmark: performance 테스트 명령어
+# redis-benchmark -q (rdis 서버의 /bin/redis=benchmark 위치에서 실행 혹은 redis-cli 처럼 전역으로 등록되어있으면 바로 ㄱ)
+
+- 서버상태 확인
+# info [all | server] 등: 서버상태확인
+
+- slowlog 확인
+	config 파일에서 설정된 "slowlog-log-slower-than" ms 이상 소요되는 모든 쿼리 시간을 기록함
+	"slowlog-max-len" 설정된 길이 갯수만큼만 저장됨.
+	# slowlog len: 현재까지 쌓인 로그 수
+	# slowlog get (쿼리 숫자): 쿼리 실행시간 체크/ 전체 안보고싶으면 쿼리숫자 넣으면 그 숫자만큼 보임
+	# slowlog reset: 재설정

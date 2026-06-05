@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+    
+        let stc = {
+            li: ['a'],
+            push2(a){
+                stc.li[stc.li.length] = a;
+                console.log(stc.li);
+            },
+            pop2(){
+                console.log(stc.li[stc.li.length-1]);
+                stc.li.splice(stc.li.length-1,1);
+            },
+        }
+    
+        let queue = {
+            li: ['a'],
+            shift2(){ // <<
+                console.log(queue.li[0]);
+                queue.li.splice(0);
+            },
+            unShift2(){ // >> 
+                var idx = 1;
+                for(var i in queue.li){
+                    queue.li[idx++] = i;
+                }
+                queue.li[0] = '1';
+                console.log(queue.li);
+                // queue.li.unshift();
+            }
+        }
+
+
+
+
+
+        
+    </script>
+    
+</body>
+</html>

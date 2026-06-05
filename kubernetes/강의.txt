@@ -134,6 +134,8 @@ Kubernetes 강의교육
 
 - kubectl 자동완성 추가
 보통 yum bash-completion 이 자동완성으로 설치가 되어있는데 kubectl에는 다시 적용시켜줘야함.
+# yum list installed | grep bash-completion
+# yum install -y bash-completion
 # source <(kubectl completion bash)
 # echo "source <(kubectl completion bash)" >> ~/.bashrc 
 
@@ -364,16 +366,16 @@ Kubernetes 강의교육
 		  name: my-deploy
 		  namespace: my-ns1
 		  labels:
-			run: my-app
+			run: my-app		# Deployment 자체 label 정보
 		spec:
 		  replicas: 3
 		  selector:
 			matchLabels:
-			  run: my-app
+			  run: my-app	# Deployment가 관리하고 배포할 pod의 label
 		  template:
 			metadata:
 			  labels:
-				run: my-app
+				run: my-app	# pod 자체의 label 정보 (* selector의 label과 template label은 꼭 일치해야한다)
 			spec:
 			  containers:
 			  - image: nginx:1.21
@@ -910,6 +912,11 @@ Kubernetes 강의교육
 		# curl goapp.k8s.com:[port 번호]: master node에서 확인
 	
 	# curl nginx.k8s.com:[port 번호]
+	
+	- 시크릿 base64디코딩 조회
+	# kubectl get secret [시크릿명]  -o jsonpath='{.data}'
+		시크릿은 콘솔에 출력이 안되기 때문에 위처럼 옵션을 줘야함
+	# echo '[encode된 시크릿값]' | base64 --decode
 
 * 따베쿠
 - livenessProbe: 주기적으로 컨테이너가 장애가 없는 지 요청/응답을 통해 건강을 확인한다.
@@ -1028,7 +1035,22 @@ Kubernetes 강의교육
 			  - image: nginx:1.14
 				name: nginx-contnr
 				
+
+		Statefulset 으로 만들어진 pod의 DNS는 고정된다.
+		이는 Headless Service를 사용하면 Service를 통해 수행되던 로드밸런싱이나 proxy를 사용하지 않고 Pod마다 고정된 DNS를 생성할 수 있다.
+		그 방법은 Service yaml 에 spec.clusterIp를 None으로 정의하면 된다.
+		[headless service name].[namespace].[type].cluster.local 형식으로 DNS 값을 가진다. type 은 svc 가 됨. 쿠버네티스 api-resource 중 하나 
+		
+		headless 폴더 참고
+
+
 	6. Job: 
 		kubernetes 는 pod를 running 중인 상태로 유지함. 작업이 완료되면 종료. batch 처리에 적합함.
 		
 	23번쨰 동영상 CronJob 편
+	
+- 이미 돌아가고 있는 pod 에 대해 yaml파일 label을 변경 후 apply 혹은 rollout 하면 에러남.
+	- 해결책: 동작중인 service, pod 정지하고, 다시 yaml파일 apply 하면됨
+	
+# kubectl logs -n bim deploy-bim-service-project-8f798f58b-kg8gz -c project | grep "Excpetion" >> ./cross.txt
+	log 중 "Exception"이라는 문구를 가진 줄을 파일로 떨궈서 저장

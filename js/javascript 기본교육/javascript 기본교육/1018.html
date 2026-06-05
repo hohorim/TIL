@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function repeat(a){
+            var rs = "";
+            while(a < 6){
+                rs += "a";
+                a++;
+            }   
+            console.log(rs);
+        }
+
+        function test(cnt){
+            switch(cnt){
+                case 1:
+                alert(1);
+                case 2:
+                alert(2);
+                case 3:
+                alert(3);
+                case 4:
+                alert(4);
+                case 5:
+                alert(5);
+            }
+        }
+
+        function test2(){
+            let user ={
+                // abcd: undefined
+            };
+
+            alert(user.abcd === undefined); 
+            // 존재하지 않는 프로퍼티에 접근하려 해도 에러가 발생하지 않고 undefined 를 반환
+            alert("abcd" in user);
+            // 프로퍼티 유무는 "in"을 사용해서 확인
+        }
+
+        let a = { num1: 1, num2:2};
+        function swap(p,q){
+            let b = a;
+            b.num1 = q;
+            b.num2 = p;
+            console.log(b.num1, b.num2);
+        }
+        
+        // console.log(a.num1, a.num2);
+        // swap(1,2);
+        // console.log(a.num1, a.num2);
+
+
+        // fuction과 람다 함수의 this 의 값이 결정되는 차이
+        function test3(){
+            window.name= 'w';
+            let u = {
+                name: "s",
+                f: function(){
+                    console.log(u.name);
+                }, 
+                fs: ()=>{
+                    console.log(u.name);
+                },
+                su: {
+                    name: 'su',
+                 
+                }
+            }
+        }
+        
+    </script>
+    
+</body>
+</html>

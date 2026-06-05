@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function encode62(a){
+            let rs = '';
+            for(; a>0;){
+                let num = a % 62;
+                a = ((a-num)/62);
+                rs = numToc62(num) + rs;
+            }
+            return console.log(rs);
+        }
+
+        function numToc62(n){
+            if(n >=0 && n <=9){
+                return String.fromCharCode(48+n);
+            }else if (n >= 10 && n<=35){
+                return String.fromCharCode(65+(n-10));
+            }else if(n >=36 && n<=61) {
+                return String.fromCharCode(97+(n-36));
+            }
+        }
+
+
+        function decode62(a){
+            let str = (a+'').split('');
+            // let str = [...a];
+            let rs = 0;
+            let index = 0;
+            for(let i = str.length-1;i>=0;i-- ){
+                rs +=parseInt(c62ToNum(str[i]))*(62**(index++));
+            }
+            return console.log(rs);
+        }
+
+        function c62ToNum(n){
+            let code = n.charCodeAt();
+
+            if(code >= 48 && code<=57){
+                return code-48;
+            }else if (code >= 65 && code<=90){
+                reutrn (code+10)-65;
+            }else if(code >=97 && code<=122) {
+                return (code+36)-97;
+            }
+        }
+
+        encode62(1000);
+        // decode62(100);
+    
+    </script>
+    
+</body>
+</html>

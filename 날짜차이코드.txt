@@ -1,0 +1,30 @@
+
+HashMap<Object, Object> map = new HashMap<Object, Object>();
+String regDt = bbsFSvcTest.retrieveRegDt(map);
+			
+			//0526호림
+			SimpleDateFormat format = new SimpleDateFormat ( "yyyy-MM-dd HH:mm:ss");
+					
+			Date time = new Date();
+					
+			String time1 = format.format(time); 
+			
+			long diff = diffOfDate(time1, regDt);
+			System.out.println(diff+"ㅎ");
+
+
+
+
+		public static long diffOfDate(String a, String b) throws Exception {
+				
+			
+		        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		        
+		        Date today = format.parse(a);
+		        Date regdt = format.parse(b);
+		        
+		        long diff = today.getTime() - regdt.getTime();
+		        long diffDays = diff / (24 * 60 * 60 * 1000);
+		        
+		        return diffDays;
+		    }

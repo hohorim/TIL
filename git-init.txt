@@ -1,0 +1,20 @@
+git init
+
+git branch -M <브랜치명>
+
+git remote add origin <git 주소>
+
+git add .
+
+git commit -m "commit message"
+
+git pull origin main --allow-unrelated-histories
+
+git push -u origin <브랜치명>
+
+
+-----------------------
+
+git remote -v [원격리포지토리 목록]
+
+git remote remove [원격이름]

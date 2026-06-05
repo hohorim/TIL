@@ -1,0 +1,25 @@
+## Pub/Sub
+- Redis Channel 이라는 개념에서 Producer 는 Channel 에 데이터를 보내고, Consumer 는 Channel을 구독하고 있는 형태. Redis 는 Channel 을 구독하고 있는 Consumer들에게 데이터를 보냄
+- Consumer 는 하나 이상의 Channel을 구독할 수 있음
+- Channel 은 하나 이상의 Consumer 를 가질 수 있음
+
+- 단점:
+    - Consumer 입장에서 데이터를 받게되는(Push) 구조로 인해 최대 한번만 전달된다. 그로 인해 구독하고 있는 Consumer 가 없거나, 데이터를 받은 Consumer에서 에러로 인한 데이터 유실 발생
+
+## List
+- FIFO(First In First Out)
+- Producer 는 LPUSH 명령으로 목록 끝에 메시지를 추가하고, Consumer 는 BLPOP/BRPOP 명령으로 목록 앞/뒷부분에서 메시지를 검색
+- 각 메시지가 하나의 Consumer 에 의해서만 소비될 수 있게 Consumer Group 을 형성
+- Pub/Sub 과 달리 Disk 에 데이터 저장
+- 순서를 유지, queue, stack 처처럼 사용가능
+
+- 단점:
+    -  느린 Consumer 로 인해 메모리가 쌓일 수 있음
+    - 병렬 처리를 지원하지 않음
+
+## Stream
+- Redis Streams는 이벤트 소싱에 적합한 Append-Only Logs
+- Message Persistence, Ordering guarantees, Support for Consumer Groups 지원
+- 애플리케이션(Consumer)이 Channel에 구독하여 메시지를 자동으로 푸시받고 있는 Pub/Sub 과 달리,
+	클라이언트가 직접 서버에 요청해아 메시지를 받을 수 있다.
+- 메시지가 유실되지 않음

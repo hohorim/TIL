@@ -1,0 +1,3 @@
+git remote -v
+
+git remote remove [원격저장소 name]

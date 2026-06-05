@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // linkedlist 구조
+        function abc(){
+            let a={
+                val : 'a',
+                next: undefined,
+                prev: undefined,
+            }
+            let b={
+                val : 'b',
+                next: undefined,
+                prev: undefined,
+            }
+            let c={
+                val : 'c',
+                next: undefined,
+                prev: undefined,
+            }
+
+            a.next = b;
+            b.next = c;
+            b.prev = a;
+            c.prev = b;
+
+            let n = undefined;
+            for(n=a; ;n=n.next){
+                console.log(n.val);
+                if(n.next === undefined) break;
+            }
+      
+        }
+
+        // 생성자로 객체 생성
+        // new Node()
+        function Node(val){ //생성자 함수.
+            // 생성자함수를 함수처럼 호출하는 것을 막을려면 아래 if.
+            if(!new.target){
+                throw Error('no');
+            }
+            this.val = val;
+            this.prevNode = undefined; 
+            this.nextNode= undefined;
+
+            // this.next = function(){
+            //     if(!this.isTail()) console.log('tail');
+                
+            //     return this.nextNode;
+            // };
+            // this.prev = function(){
+            //     if(!this.isHead()) console.log('head');
+            //     return this.prevNode;
+            // };
+            // this.isHead = function(){
+            //     if(this.prevNode === undefined && this.nextNode !== undefined){
+            //         return false;
+            //     }else return true;
+            // };
+            // this.isTail = function(){
+            //     if(this.nextNode === undefined && this.prevNode !== undefined){
+            //         return false;
+            //     } else return true;
+            // }
+        }
+        
+        // 생성자 안에 함수를 넣으면 new로 생성자 생성할 때마다 쓸데없는 중복함수가 생김
+        // 아래처럼 표현해주면 중복함수를 피할 수 있음.
+        Node.prototype.next = function(){
+            if(!this.isTail()) console.log('tail');
+            return this.nextNode;
+        };
+        Node.prototype.prev = function(){
+            if(!this.isHead()) console.log('head');
+            return this.prevNode;
+        };
+        Node.prototype.isHead = function(){
+            if(this.prevNode === undefined && this.nextNode !== undefined) return false;
+            else return true;
+        };
+        Node.prototype.isTail = function(){
+            if(this.nextNode === undefined && this.prevNode !== undefined) return false;
+            else return true;
+        }
+        let a = new Node('a');
+        let b = new Node('b');
+        let c = new Node('c');
+        a.nextNode = b;
+        b.nextNode = c;
+        b.prevNode = a;
+        c.prevNode = b;
+
+        let n = undefined;
+        for(n=a; ;n=n.next()){
+            console.log(n.val);
+            if(n.next() === undefined) break;
+            // if(Node.isTail) break;
+        }
+
+   
+        // symbol 사용방법
+        // 외부에서 접근이 안됨
+        //Symbol.iterator 공부
+        //Symbol.toPrimitive 공부 -> objecct 객체를 형변환
+        function symb(){
+            function Node(name) {
+            if(!new.target) {
+                return new Node(name);
+            }
+
+            let sb = Symbol('name');
+            this[sb] = name;
+
+            this.getName = function() {
+                return this[sb];
+            };
+
+            this.setName = function(name) {
+                if(name.startsWith('s')) {
+                    this[sb] = name;
+                } else {
+                    throw Error('안되는 이름');
+                }
+            }
+            this.prevNode = undefined;
+            this.nextNode = undefined;
+        }
+        }
+
+        function position(x,y){
+            this.x = x;
+            this.y = y;
+        }
+
+        
+
+        
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        window.a='w';
+​
+        // let o = {
+        //     a:'o',
+        //     f: function(){console.log(this.a);},
+        //     af: ()=>{console.log(this.a)}
+        // };
+​
+        // let p = {
+        //     a: 'p'
+        // }
+​
+        // p.f = o.f;
+        // p.af = o.af;
+​
+        // o.f(); //o
+        // p.f(); //p
+        // o.af(); //w11, o3,
+        // p.af(); //w6, p8
+​
+        // #######################################
+        // let o = {
+        //     a:'o',
+        //     f: (function() {
+        //         return function(){console.log(this.a);};
+        //     })(),
+        //     af: (function() { 
+        //         return ()=>{console.log(this.a)};
+        //     })()
+        // };
+​
+        // o.f(); // o13, w1
+        // o.af(); //o9, w
+        
+        // #######################################
+        // let o = {
+        //     a:'o',
+        //     p: {
+        //         a: 'p',
+        //         f: function(){console.log(this.a);},
+        //         af: ()=>{console.log(this.a)},
+        //     }
+        // };
+​
+        // o.f = o.p.f;
+        // o.af = o.p.af;
+        
+        // o.f(); //o14
+        // o.p.f(); //p14
+        // o.af(); //w14
+        // o.p.af(); //w11, o3
+​
+        // ########################################
+        // function O() {
+        //     this.a = 'o';
+        //     this.f = function() {console.log(this.a)};
+        //     this.af = ()=>{console.log(this.a)};            
+        // }
+​
+        // let o = new O();
+        // o.f(); // o11
+        // o.af(); // w11
+​
+        // let p = {
+        //     a: 'p'
+        // };
+​
+        // p.f = o.f;
+        // p.af = o.af;
+​
+        // p.f(); //o7, p3, n1
+        // p.af(); //o8, w1, p1, n1
+​
+        // ##############################################
+        // function O(a) {
+        //     this.a = a;
+        //     this.f = function() {console.log(this.a)};
+        //     this.af = ()=>{console.log(this.a)};            
+        // }
+​
+        // let oa = [new O('o1'), new O('o2'), new O('o3')];
+        // let o = new O('o');
+​
+        // oa.forEach(function(e){
+        //     console.log(this.a); //
+        //     e.f(); //o1, o2, o3
+        //     e.af(); //o1, o2, o3
+        // });
+​
+        // console.log('#################');
+​
+        // oa.forEach((e)=>{
+        //     console.log(this.a); //
+        //     e.f(); //o1, o2, o3
+        //     e.af(); //o1, o2, o3
+        // });
+​
+        // console.log('#################');
+​
+        // let p = {
+        //     a: 'p',
+        //     setF: function(f) {
+        //         this.f = f;
+        //     },
+        //     setAF: function(f) {
+        //         this.af = f;
+        //     }
+        // };
+​
+        // p.setF(o.f);
+        // p.setAF(o.af);
+​
+        // p.f();
+        // p.af();
+​
+        // console.log('#################');
+​
+        // p.setF(function(){
+        //     console.log(this.a);
+        //     o.f();
+        //     o.af();
+        //     console.log('#################');            
+        // });
+​
+        // p.f();
+​
+        // p.setAF(()=>{
+        //     console.log(this.a);
+        //     o.f();
+        //     o.af();
+        //     console.log('#################');            
+        // });
+​
+        // p.af();
+        // console.log('#################');
+​
+        // setTimeout(()=>{
+        //     console.log(this.a);
+        //     o.f();
+        //     o.af();
+        //     console.log('#################');
+        // }, 100);
+​
+        // setTimeout(function(){
+        //     console.log(this.a);
+        //     o.f();
+        //     o.af();
+        //     console.log('#################');
+        // }, 200);
+​
+        // setTimeout((p)=>{
+        //     p.f();
+        //     p.af();
+        //     console.log('#################');
+        // }, 300, o);
+​
+        // setTimeout((f, af)=>{
+        //     f();
+        //     af();
+        //     console.log('#################');
+        // }, 400, o.f, o.af);
+​
+    </script>
+</body>
+</html>

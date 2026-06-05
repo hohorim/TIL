@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="/photoshop.js"></script>
+    <style>
+        canvas {
+            width: 400px;
+            height: 200px;
+            border: solid 1px #000000;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="canvas1">
+        <canvas class="canvas"></canvas>
+        <button class="undo">undo</button>
+        <button class="redo">redo</button>
+    </div>
+    <div id="canvas2">
+        <canvas class="canvas"></canvas>
+        <button class="undo">undo</button>
+        <button class="redo">redo</button>
+    </div>
+    <script>
+        function createPhotoshop(id) {
+            let canvasContainer = document.getElementById(id);
+            let canvas = canvasContainer.querySelector('.canvas');
+
+            let undoButton = canvasContainer.querySelector('.undo');
+            let redoButton = canvasContainer.querySelector('.redo');
+
+            canvas.width = 400;
+            canvas.height = 200;
+
+            let photoshop = new Photoshop(canvas);
+
+            undoButton.addEventListener('click', (e) => {
+                photoshop.undo();
+            });
+
+            redoButton.addEventListener('click', (e) => {
+                photoshop.redo();
+            });
+        }
+
+        createPhotoshop('canvas1');
+        createPhotoshop('canvas2');
+    </script>
+</body>
+
+</html>

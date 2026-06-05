@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+    <script>
+        // await 실행순서 동작방식
+
+        async function af(p) {
+            console.log(p + 'af');
+            return 1;
+        }
+
+        function st(p) {
+            return new Promise((resolve) => {
+                console.log('st inner');
+                setTimeout(() => {
+                    console.log(p + 'st1');
+                    resolve('st_st');
+                    console.log(p + 'st2');
+                }, 1000);
+            });
+        }
+
+        function f() {
+            console.log('f');
+        }
+
+        async function t(p) {
+            console.log(p + 't1');
+            await st(p); //af(p);
+            console.log(p + 't2');
+            await st(p); //af(p);
+            console.log(p + 't3');
+        }
+
+        //await 는 await로 감싼 함수안에서만 동기임.
+        /* 
+        (async function() {
+            await t('A');
+            await t('B');
+        })();
+        
+        console.log(1);
+        */
+
+        // 감싸지 않으면 await는 다음 실행으로 순서를 양보함.
+        console.log(1);
+        t('A');
+        console.log(2);
+        t('B');
+        console.log(3);
+    </script>
+</body>
+</html>
