@@ -135,5 +135,7 @@ SELECT to_tsvector('english','hello world! The pineapple is very delicious. appl
 	postgres container: # psql -U postgres
 	postgres container postgres cli: # create user bim PASSWORD '1234' SUPERUSER;
 	
+	초기 postgres/1234
+	
 	
 
