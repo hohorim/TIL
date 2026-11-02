@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envoy Gateway 처음부터 끝까지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1B2A41; --muted:#5A6B82; --line:#D5DCE6;
+  --signal:#0F7C78; --signal-soft:#E1F2F1; --warn:#9A6414; --warn-soft:#FBF1DF;
+  --err:#B4423A; --err-soft:#FBE7E5; --ok:#2F7D3A; --ok-soft:#E5F3E7;
+  --code-bg:#1B2A41; --code-ink:#E6EDF5; --code-dim:#8FA3BC;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161E; --surface:#18202B; --ink:#E4E9F0; --muted:#97A6BA; --line:#2C3847;
+    --signal:#4CC2BC; --signal-soft:#16302F; --warn:#E3B062; --warn-soft:#2E2617;
+    --err:#EB7D74; --err-soft:#33201F; --ok:#7CC987; --ok-soft:#1A2C1D;
+    --code-bg:#0D1218; --code-ink:#DDE5EE; --code-dim:#7C8DA3;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161E; --surface:#18202B; --ink:#E4E9F0; --muted:#97A6BA; --line:#2C3847;
+  --signal:#4CC2BC; --signal-soft:#16302F; --warn:#E3B062; --warn-soft:#2E2617;
+  --err:#EB7D74; --err-soft:#33201F; --ok:#7CC987; --ok-soft:#1A2C1D;
+  --code-bg:#0D1218; --code-ink:#DDE5EE; --code-dim:#7C8DA3;
+  color-scheme:dark;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto;}}
+*,*::before,*::after{box-sizing:inherit;}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  font-size:16.5px;line-height:1.75;word-break:keep-all;overflow-wrap:break-word;
+}
+img{max-width:100%;}
+a{color:var(--signal);}
+a:focus-visible,button:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px;}
+code,pre{font-family:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;}
+:not(pre)>code{background:var(--signal-soft);color:var(--ink);padding:.1em .4em;border-radius:4px;font-size:.88em;}
+
+.wrap{max-width:820px;margin:0 auto;padding:0 20px;}
+
+/* hero */
+.hero{padding:56px 0 40px;}
+.hero h1{font-size:clamp(1.9rem,4.6vw,2.7rem);line-height:1.25;margin:0 0 14px;font-weight:700;letter-spacing:-.01em;}
+.hero p.lead{color:var(--muted);font-size:1.08rem;margin:0 0 34px;max-width:36em;}
+
+.route{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;}
+.hop{flex:1 1 0;min-width:108px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:6px 4px;}
+.hop .node{width:100%;border:1.5px solid var(--ink);border-radius:10px;padding:10px 6px;font-weight:600;font-size:.92rem;line-height:1.35;background:var(--bg);}
+.hop.key .node{border-color:var(--signal);background:var(--signal-soft);}
+.hop .why{font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.4;}
+.hop:not(:last-child)::after{content:"";position:absolute;right:-7px;top:26px;width:12px;height:12px;border-top:2px solid var(--signal);border-right:2px solid var(--signal);transform:rotate(45deg);z-index:1;}
+@media (max-width:720px){
+  .route{flex-direction:column;}
+  .hop{flex-direction:row;gap:12px;text-align:left;padding:4px 0 18px;}
+  .hop .node{width:150px;flex:none;}
+  .hop .why{margin-top:0;align-self:center;}
+  .hop:not(:last-child)::after{right:auto;left:68px;top:auto;bottom:4px;transform:rotate(135deg);}
+}
+
+/* toc */
+.toc{margin:34px 0 10px;padding:18px 22px;border-left:3px solid var(--signal);background:var(--surface);border-radius:0 10px 10px 0;}
+.toc strong{display:block;margin-bottom:6px;}
+.toc ol{margin:0;padding-left:1.3em;columns:2;column-gap:28px;}
+.toc li{break-inside:avoid;font-size:.95rem;}
+@media (max-width:600px){.toc ol{columns:1;}}
+
+/* chapters on a rail */
+.chapters{position:relative;padding-left:52px;margin-top:44px;}
+.chapters::before{content:"";position:absolute;left:17px;top:8px;bottom:0;width:2px;background:var(--line);}
+.ch{position:relative;padding-bottom:56px;}
+.ch .dot{position:absolute;left:-52px;top:2px;width:36px;height:36px;border-radius:50%;background:var(--bg);border:2px solid var(--signal);color:var(--signal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;}
+.ch h2{font-size:1.5rem;line-height:1.35;margin:0 0 6px;font-weight:700;}
+.ch .sum{color:var(--muted);margin:0 0 22px;}
+.ch h3{font-size:1.1rem;margin:30px 0 10px;font-weight:600;}
+.ch p{margin:0 0 14px;max-width:44em;}
+@media (max-width:600px){
+  .chapters{padding-left:40px;}
+  .chapters::before{left:13px;}
+  .ch .dot{left:-40px;width:28px;height:28px;font-size:.82rem;}
+}
+
+pre{background:var(--code-bg);color:var(--code-ink);padding:16px 18px;border-radius:10px;overflow-x:auto;font-size:.84rem;line-height:1.6;margin:0 0 18px;}
+pre .c{color:var(--code-dim);}
+pre .h{color:#7FE0D9;}
+
+.scroll{overflow-x:auto;margin:0 0 18px;}
+table{border-collapse:collapse;width:100%;font-size:.92rem;background:var(--surface);min-width:520px;}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;}
+th{background:var(--signal-soft);font-weight:600;}
+
+.note{border-radius:10px;padding:14px 16px;margin:0 0 18px;font-size:.95rem;}
+.note p{margin:0;}
+.note p+p{margin-top:8px;}
+.note.tip{background:var(--signal-soft);}
+.note.warn{background:var(--warn-soft);border-left:3px solid var(--warn);}
+.note.err{background:var(--err-soft);border-left:3px solid var(--err);}
+
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 18px;}
+.pair>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+.pair h4{margin:0 0 6px;font-size:1rem;}
+.pair p{margin:0;font-size:.93rem;color:var(--muted);}
+@media (max-width:600px){.pair{grid-template-columns:1fr;}}
+
+.steps{list-style:none;margin:0 0 18px;padding:0;counter-reset:s;}
+.steps li{counter-increment:s;position:relative;padding:0 0 12px 38px;}
+.steps li::before{content:counter(s);position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center;}
+
+.result{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
+.result .badge{grid-row:span 3;align-self:start;font-weight:700;font-size:.85rem;padding:4px 10px;border-radius:6px;white-space:nowrap;}
+.badge.bad{background:var(--err-soft);color:var(--err);}
+.badge.good{background:var(--ok-soft);color:var(--ok);}
+.result code{font-size:.8rem;}
+.result .what{font-weight:600;}
+.result .why{color:var(--muted);font-size:.93rem;}
+
+footer{color:var(--muted);font-size:.85rem;padding:10px 0 50px;border-top:1px solid var(--line);margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>요청 하나가 Envoy Gateway를 지나가는 길</h1>
+  <p class="lead">cobim 클러스터를 예로, Envoy가 무엇인지부터 hosts 설정과 테스트 방법까지 순서대로 정리했습니다. 아래 한 줄이 이 문서 전체의 요약입니다.</p>
+
+  <div class="route" role="img" aria-label="요청 흐름: 내 PC, 이름을 IP로, 로드밸런서, Envoy, HTTPRoute, 백엔드 Service, 앱 Pod">
+    <div class="hop"><div class="node">내 PC</div><div class="why">curl, 브라우저</div></div>
+    <div class="hop"><div class="node">이름 → IP</div><div class="why">hosts, DNS, nip.io</div></div>
+    <div class="hop"><div class="node">LB IP</div><div class="why">Gateway마다 하나</div></div>
+    <div class="hop key"><div class="node">Envoy</div><div class="why">Host + path로 판단</div></div>
+    <div class="hop key"><div class="node">HTTPRoute</div><div class="why">parentRefs, hostnames</div></div>
+    <div class="hop"><div class="node">Service</div><div class="why">포트가 맞아야 함</div></div>
+    <div class="hop"><div class="node">앱 Pod</div><div class="why">최종 응답</div></div>
+  </div>
+
+  <nav class="toc" aria-label="목차">
+    <strong>순서</strong>
+    <ol>
+      <li><a href="#envoy">Envoy와 Envoy Gateway</a></li>
+      <li><a href="#parts">구성 요소</a></li>
+      <li><a href="#create">Gateway를 만들면 생기는 일</a></li>
+      <li><a href="#cluster">우리 클러스터 지금 모습</a></li>
+      <li><a href="#ports">포트와 IP는 어디서 정하나</a></li>
+      <li><a href="#routing">Envoy가 라우트를 고르는 법</a></li>
+      <li><a href="#names">이름을 IP로 바꾸는 방법</a></li>
+      <li><a href="#tests">테스트로 확인하기</a></li>
+      <li><a href="#debug">안 될 때 보는 곳</a></li>
+      <li><a href="#migrate">운영 도메인 옮기기 전 테스트</a></li>
+      <li><a href="#todo">남은 할 일과 명령어 모음</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main class="chapters">
+
+<!-- 1 -->
+<section class="ch" id="envoy">
+  <div class="dot">1</div>
+  <h2>Envoy와 Envoy Gateway</h2>
+  <p class="sum">이름이 비슷하지만 하나는 일꾼이고, 하나는 관리자입니다.</p>
+
+  <div class="pair">
+    <div>
+      <h4>Envoy</h4>
+      <p>요청을 받아서 알맞은 곳으로 넘겨주는 프록시 프로그램입니다. nginx 같은 리버스 프록시라고 보면 됩니다. 실제로 트래픽이 지나가는 곳입니다.</p>
+    </div>
+    <div>
+      <h4>Envoy Gateway</h4>
+      <p>Envoy를 관리하는 컨트롤러입니다. Gateway와 HTTPRoute를 읽어서 Envoy를 띄우고 규칙을 넣어줍니다. 요청은 이곳을 지나가지 않습니다.</p>
+    </div>
+  </div>
+
+  <p>nginx는 설정 파일을 고치고 reload해야 하지만, Envoy는 실행 중에 API로 설정을 실시간으로 받습니다(xDS 방식). 그래서 HTTPRoute를 apply하면 Envoy Gateway가 그 내용을 바로 Envoy에 밀어주고, Envoy는 재시작 없이 새 규칙을 적용합니다.</p>
+
+  <div class="note tip"><p>Envoy는 문지기이고, Envoy Gateway는 문지기에게 근무 지침을 내려주는 관리자입니다.</p></div>
+</section>
+
+<!-- 2 -->
+<section class="ch" id="parts">
+  <div class="dot">2</div>
+  <h2>구성 요소</h2>
+  <p class="sum">사람이 만드는 것과 컨트롤러가 자동으로 만드는 것으로 나뉩니다.</p>
+
+  <div class="scroll"><table>
+    <tr><th>구성 요소</th><th>정체</th><th>누가 만드나</th></tr>
+    <tr><td>envoy-gateway (Deploy, Pod, Svc)</td><td>컨트롤러 프로그램. 관리자</td><td>helm 설치 시 생성</td></tr>
+    <tr><td>GatewayClass</td><td>“이 클래스는 어느 컨트롤러가 담당한다”는 등록서</td><td>사람</td></tr>
+    <tr><td>Gateway</td><td>“입구를 하나 만들어 달라”는 요청서</td><td>사람</td></tr>
+    <tr><td>HTTPRoute</td><td>어느 Gateway에서, 어떤 Host와 path를 어디로 보낼지 정한 규칙</td><td>사람</td></tr>
+    <tr><td>EnvoyProxy</td><td>Envoy를 어떻게 띄울지 정하는 설정 (Svc 타입, LB IP, Pod 수 등)</td><td>사람 (선택)</td></tr>
+    <tr><td>envoy-{ns}-{gateway명}-{해시} (Deploy, Pod, Svc)</td><td>실제 Envoy 프록시와 그 LoadBalancer</td><td>컨트롤러가 Gateway마다 자동 생성</td></tr>
+  </table></div>
+
+  <h3>GatewayClass는 컨트롤러가 아닙니다</h3>
+  <p>GatewayClass의 CONTROLLER 열에 보이는 <code>gateway.envoyproxy.io/gatewayclass-controller</code>는 Pod 이름이 아니라 담당자 이름표(문자열)입니다. envoy-gateway Pod가 “나는 이 이름표 담당”이라고 하면서 클러스터의 GatewayClass를 훑어보고, 이름표가 맞으면 받아들입니다. 그 결과가 <code>ACCEPTED: True</code>입니다.</p>
+
+  <div class="scroll"><table>
+    <tr><th>비유</th><th>실제</th></tr>
+    <tr><td>관리 회사</td><td>envoy-gateway Pod</td></tr>
+    <tr><td>“이 건물은 OO 관리회사가 담당”이라는 계약서</td><td>GatewayClass</td></tr>
+    <tr><td>“입구 하나 만들어 주세요” 요청서</td><td>Gateway</td></tr>
+    <tr><td>관리회사가 배치한 경비원</td><td>Envoy Pod</td></tr>
+  </table></div>
+
+  <h3>왜 Envoy는 전부 envoy-gateway-system에 생기나</h3>
+  <p>helm으로 설치할 때 <code>-n envoy-gateway-system</code>으로 지정했기 때문에 컨트롤러가 그 namespace에 있고, 기본 동작상 컨트롤러는 Envoy를 자기 namespace에 모아서 만듭니다. Gateway가 cobim namespace에 있어도 마찬가지입니다. 컨트롤러 권한을 좁게 유지하고, 인프라를 한곳에서 관리하기 위한 설계입니다.</p>
+  <pre><span class="c"># 설치 방식 확인</span>
+helm list -A | grep -i gateway</pre>
+  <div class="note tip"><p>lakehouse-gateway가 envoy-gateway-system에 있는 건 helm과 관계없습니다. 누군가 Gateway를 만들 때 그 namespace를 고른 것입니다.</p>
+  <p>최근 버전(v1.5 이후로 알려짐)은 Envoy를 Gateway와 같은 namespace에 만드는 GatewayNamespace 모드도 지원합니다. 컨트롤러 전체 설정이라 바꿀 때는 영향 범위를 먼저 확인하세요.</p></div>
+</section>
+
+<!-- 3 -->
+<section class="ch" id="create">
+  <div class="dot">3</div>
+  <h2>Gateway를 만들면 생기는 일</h2>
+  <p class="sum">yaml 하나를 apply하면 컨트롤러가 나머지를 처리합니다.</p>
+
+  <ol class="steps">
+    <li><code>kubectl apply -f gateway.yaml</code></li>
+    <li>컨트롤러가 감지합니다. <code>gatewayClassName: eg</code>를 보고 자기 담당인지 확인하고, 연결된 EnvoyProxy가 있으면 그 설정을 읽습니다.</li>
+    <li>Envoy Deployment를 만들고 Pod를 띄웁니다. Pod가 <code>2/2</code>인 이유는 envoy 컨테이너와 shutdown-manager 컨테이너가 함께 있기 때문입니다.</li>
+    <li>Envoy Service를 만듭니다. 기본 타입은 LoadBalancer이고, 포트는 Gateway의 listener를 그대로 따릅니다.</li>
+    <li>클라우드(NHN Cloud)가 LB를 만들고 EXTERNAL-IP를 발급합니다.</li>
+    <li>컨트롤러가 Gateway status에 ADDRESS와 <code>PROGRAMMED: True</code>를 기록합니다.</li>
+    <li>이후 HTTPRoute가 parentRefs로 이 Gateway를 지정하면, 컨트롤러가 라우팅 규칙을 이 Envoy에만 넣습니다.</li>
+  </ol>
+
+  <pre><span class="c"># 상태가 이상할 때</span>
+kubectl describe gateway -n cobim cobim-gateway
+kubectl describe svc -n envoy-gateway-system envoy-cobim-cobim-gateway-65fd4c21
+kubectl logs -n envoy-gateway-system deploy/envoy-gateway --tail=100</pre>
+  <div class="note warn"><p>EXTERNAL-IP가 <code>&lt;pending&gt;</code>에서 멈춰 있으면 5단계, 즉 클라우드 LB 생성 쪽 문제입니다. Svc의 이벤트를 보세요.</p></div>
+</section>
+
+<!-- 4 -->
+<section class="ch" id="cluster">
+  <div class="dot">4</div>
+  <h2>우리 클러스터 지금 모습</h2>
+  <p class="sum">Gateway가 두 개이고, Envoy도 완전히 별개로 두 개입니다.</p>
+
+  <div class="scroll"><table>
+    <tr><th>Gateway</th><th>Envoy (Deploy, Pod, Svc)</th><th>EXTERNAL-IP</th><th>포트</th></tr>
+    <tr><td>cobim / cobim-gateway</td><td>envoy-cobim-cobim-gateway-65fd4c21</td><td>133.186.152.59</td><td>80, 443</td></tr>
+    <tr><td>envoy-gateway-system / lakehouse-gateway</td><td>envoy-envoy-gateway-system-lakehouse-gateway-e4b9af21</td><td>125.6.39.53</td><td>80</td></tr>
+  </table></div>
+
+  <pre>envoy-gateway-system
+ ├ envoy-gateway (컨트롤러)        <span class="c">← helm 설치로 생김</span>
+ ├ lakehouse-gateway (Gateway)      <span class="c">← 사람이 이 ns를 골라서 만듦</span>
+ ├ envoy-...-lakehouse-gateway-...  <span class="c">← 컨트롤러가 자동 생성</span>
+ └ envoy-cobim-cobim-gateway-...    <span class="c">← 컨트롤러가 자동 생성</span>
+
+cobim
+ ├ cobim-gateway (Gateway)          <span class="c">← 사람이 이 ns를 골라서 만듦</span>
+ └ HTTPRoute들, 백엔드 Service와 Pod</pre>
+
+  <h3>EnvoyProxy 연결 상태</h3>
+  <p>GatewayClass <code>eg</code>의 parametersRef에 <code>envoy-gateway-system/lakehouse-envoy-config</code>가 걸려 있습니다. 클래스 전체에 거는 방식이라 <strong>cobim-gateway도 같은 설정으로 떠 있습니다.</strong> ClientTrafficPolicy, BackendTrafficPolicy, SecurityPolicy는 없습니다.</p>
+
+  <h3>cobim-api-routes는 어디에 붙어 있나</h3>
+  <p>parentRefs가 lakehouse-gateway입니다. 그래서 <code>cobim.internal</code> 규칙은 <strong>125.6.39.53의 Envoy에만</strong> 있습니다. HTTPRoute(cobim)와 Gateway(envoy-gateway-system)의 namespace가 다른데도 <code>Accepted: True</code>이니, Gateway의 listener가 다른 namespace의 라우트를 허용하고 있다는 뜻입니다.</p>
+</section>
+
+<!-- 5 -->
+<section class="ch" id="ports">
+  <div class="dot">5</div>
+  <h2>포트와 IP는 어디서 정하나</h2>
+  <p class="sum">자동 생성된 Svc를 직접 고치면 컨트롤러가 되돌립니다. 항상 Gateway나 EnvoyProxy를 고칩니다.</p>
+
+  <h3>Svc의 80:30927이 뜻하는 것</h3>
+  <pre>내 PC
+  ↓  133.186.152.59:<span class="h">80</span>       <span class="c">← port. 사용자가 접속하는 포트 (listener로 지정)</span>
+NHN Cloud LB
+  ↓  워커노드:<span class="h">30927</span>          <span class="c">← nodePort. LB와 노드 사이 연결용 (자동 할당)</span>
+워커노드
+  ↓  Envoy Pod:<span class="h">10080</span>         <span class="c">← targetPort. Envoy 컨테이너 (1024 미만은 +10000)</span>
+Envoy</pre>
+  <p>사용자는 80과 443만 알면 됩니다. 30927은 LoadBalancer 타입 Svc가 내부적으로 함께 만드는 NodePort입니다.</p>
+
+  <div class="scroll"><table>
+    <tr><th>바꾸고 싶은 것</th><th>고치는 곳</th></tr>
+    <tr><td>포트 (80, 443 등)</td><td>Gateway yaml의 <code>listeners</code></td></tr>
+    <tr><td>EXTERNAL-IP, Svc 타입, 어노테이션, NodePort 고정</td><td>EnvoyProxy yaml</td></tr>
+    <tr><td>Envoy Pod 개수, CPU와 메모리</td><td>EnvoyProxy yaml</td></tr>
+  </table></div>
+
+  <h3>포트는 Gateway의 listener로</h3>
+  <pre>spec:
+  gatewayClassName: eg
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80          <span class="c"># → Svc port 80</span>
+  - name: https
+    protocol: HTTPS
+    port: 443</pre>
+
+  <h3>IP는 EnvoyProxy로 정하고 Gateway에 연결</h3>
+  <pre>apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: cobim-envoy-config
+  namespace: cobim
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: LoadBalancer
+        loadBalancerIP: 133.186.xxx.xxx   <span class="c"># 미리 확보한 Floating IP</span></pre>
+
+  <div class="pair">
+    <div>
+      <h4>방법 A: Gateway 하나에만</h4>
+      <p>Gateway의 <code>spec.infrastructure.parametersRef</code>로 연결합니다. EnvoyProxy는 Gateway와 같은 namespace에 둡니다. 클래스 설정보다 우선합니다.</p>
+    </div>
+    <div>
+      <h4>방법 B: 클래스 전체에</h4>
+      <p>GatewayClass의 <code>spec.parametersRef</code>로 연결합니다. 지금 클러스터가 이 방식입니다.</p>
+    </div>
+  </div>
+  <div class="note warn"><p>NHN Cloud에서 <code>loadBalancerIP</code>로 IP를 고정하는 정확한 방법과 필요한 어노테이션은 NKS 문서로 확인하세요. Gateway의 <code>spec.addresses</code>는 Svc의 externalIPs로 들어가는 것이라 클라우드 LB IP 고정과는 다릅니다.</p></div>
+
+  <h3>yaml 파일이 없을 때</h3>
+  <p>클러스터에서 꺼내 볼 수 있습니다. <code>describe</code>는 읽기용 요약이고, 재사용하려면 <code>-o yaml</code>을 씁니다.</p>
+  <pre>kubectl get gateway -n cobim cobim-gateway -o yaml &gt; cobim-gateway.yaml
+<span class="c"># 저장 후 지울 것: creationTimestamp, generation, resourceVersion, uid,</span>
+<span class="c"># managedFields, last-applied-configuration 어노테이션, status 전체</span></pre>
+</section>
+
+<!-- 6 -->
+<section class="ch" id="routing">
+  <div class="dot">6</div>
+  <h2>Envoy가 라우트를 고르는 법</h2>
+  <p class="sum">Envoy는 Host 헤더와 path, 두 가지를 봅니다.</p>
+
+  <pre>125.6.39.53 의 Envoy
+  Host: cobim.internal           → cobim-api-routes
+  Host: account.cobim.internal   → bim-service-account
+  Host: 그 외                     → 매칭 없음 → 빈 404</pre>
+
+  <h3>parentRefs: 어느 Gateway에 붙을지</h3>
+  <p>HTTPRoute를 추가할 때 parentRefs로 Gateway를 지정합니다. 규칙은 그 Gateway의 Envoy에만 들어갑니다. 다른 Gateway로 옮기려면 parentRefs만 바꾸면 되고, 두 개를 적으면 양쪽에서 모두 동작합니다.</p>
+
+  <h3>hostnames: 선택 사항</h3>
+  <p>hostnames를 빼면 Host가 무엇이든 path만 보고 처리하므로 IP로 바로 접속해도 동작합니다. 한 Gateway에 여러 서비스나 도메인을 올릴 때는 path 충돌을 막기 위해 넣는 게 정석입니다. Gateway listener에도 hostname을 걸 수 있고, 둘 다 있으면 겹치는 부분만 허용됩니다. <code>*.cobim.internal</code> 같은 와일드카드도 됩니다.</p>
+
+  <h3>path 규칙은 위에서부터가 아니라 가장 구체적인 것부터</h3>
+  <pre>/api/account  → svc-bim-service-account:8082
+/api/message  → svc-bim-service-message:8080   <span class="c">← 현재 에러</span>
+/api/schedule → svc-bim-service-schedule:8088
+/             → svc-bim-service-project:8088   <span class="c">← 나머지 전부</span></pre>
+  <p>예를 들어 <code>/api/systemcode/list</code>는 앞의 세 개에 해당하지 않아 마지막 <code>/</code>로 project 서비스에 갑니다.</p>
+</section>
+
+<!-- 7 -->
+<section class="ch" id="names">
+  <div class="dot">7</div>
+  <h2>이름을 IP로 바꾸는 방법</h2>
+  <p class="sum">hosts는 Envoy가 아니라 내 PC를 위한 설정입니다.</p>
+
+  <h3>hosts 설정이 하는 일</h3>
+  <pre>hosts: 125.6.39.53  cobim.internal
+
+curl http://cobim.internal/api/systemcode/list
+
+① 접속할 IP 찾기     cobim.internal → 125.6.39.53  <span class="c">← TCP 연결에만 사용</span>
+② HTTP 요청 보내기   Host: cobim.internal          <span class="c">← URL의 이름 그대로</span></pre>
+  <p>IP는 어디로 접속할지 정할 때만 쓰이고, Host 헤더에는 원래 이름이 들어갑니다. 그래서 hosts 한 줄이 “올바른 IP”와 “올바른 Host”를 한 번에 맞춰줍니다. 브라우저도 똑같이 동작합니다.</p>
+
+  <h3>hosts 없이 같은 효과를 내는 방법</h3>
+  <pre>curl -H "Host: cobim.internal" http://125.6.39.53/api/systemcode/list
+curl --resolve cobim.internal:80:125.6.39.53 http://cobim.internal/api/systemcode/list</pre>
+
+  <h3>도메인 종류별 정리</h3>
+  <div class="scroll"><table>
+    <tr><th>도메인</th><th>이름을 IP로 바꿔주는 곳</th><th>hosts 필요</th></tr>
+    <tr><td>cobim.internal</td><td>없음 (내부용 이름)</td><td>필요</td></tr>
+    <tr><td>cobim.io</td><td>실제 DNS (지금은 기존 서버)</td><td>새 서버로 테스트할 때만</td></tr>
+    <tr><td>cobim.125.6.39.53.nip.io</td><td>nip.io 공개 DNS</td><td>불필요</td></tr>
+  </table></div>
+
+  <h3>nip.io</h3>
+  <p>도메인 이름 안에 적힌 IP를 그대로 돌려주는 공개 DNS입니다. <code>cobim.125.6.39.53.nip.io</code>를 조회하면 125.6.39.53이 나옵니다. hosts 없이 바로 테스트할 수 있지만, 외부 DNS가 막힌 망에서는 안 될 수 있고 HTTPS는 사실상 쓸 수 없는 테스트 전용입니다.</p>
+</section>
+
+<!-- 8 -->
+<section class="ch" id="tests">
+  <div class="dot">8</div>
+  <h2>테스트로 확인하기</h2>
+  <p class="sum">hosts 없이 IP와 Host 헤더를 바꿔가며 보낸 네 가지 요청입니다.</p>
+
+  <div class="result">
+    <span class="badge bad">빈 404</span>
+    <span class="what"><code>curl http://133.186.152.59/api/systemcode/list</code></span>
+    <span class="why">Host가 IP 그대로라 맞는 라우트가 없습니다.</span>
+    <span></span>
+  </div>
+  <div class="result">
+    <span class="badge bad">빈 404</span>
+    <span class="what"><code>curl http://125.6.39.53/api/systemcode/list</code></span>
+    <span class="why">올바른 Gateway로 갔어도 Host가 안 맞으면 라우팅되지 않습니다.</span>
+    <span></span>
+  </div>
+  <div class="result">
+    <span class="badge bad">빈 404</span>
+    <span class="what"><code>curl -H "Host: cobim.internal" http://133.186.152.59/...</code></span>
+    <span class="why">Host는 맞지만 엉뚱한 Gateway입니다. cobim-gateway의 Envoy는 cobim.internal 규칙을 모릅니다.</span>
+    <span></span>
+  </div>
+  <div class="result">
+    <span class="badge good">200</span>
+    <span class="what"><code>curl -H "Host: cobim.internal" http://125.6.39.53/...</code></span>
+    <span class="why">IP와 Host가 둘 다 맞습니다. <code>/</code> 규칙을 타고 project 서비스가 JSON을 돌려줬습니다.</span>
+    <span></span>
+  </div>
+
+  <div class="note tip"><p>성공 조건은 두 가지입니다. 올바른 Gateway의 IP로 접속하고, 올바른 Host 헤더를 보내는 것. hosts에 <code>125.6.39.53 cobim.internal</code>을 넣으면 둘 다 맞춰집니다.</p></div>
+</section>
+
+<!-- 9 -->
+<section class="ch" id="debug">
+  <div class="dot">9</div>
+  <h2>안 될 때 보는 곳</h2>
+  <p class="sum">“아무 출력 없이 끝났다”는 성공이 아닙니다.</p>
+
+  <h3>curl의 함정</h3>
+  <p>curl은 응답을 받기만 하면 404나 500이어도 에러로 보지 않고, 상태 코드는 <code>-v</code> 없이는 보여주지 않습니다. Envoy가 보내는 404는 본문이 비어 있어서 화면에 아무것도 안 나옵니다. 처음에 133으로 “된다”고 보였던 이유가 이것입니다.</p>
+  <pre>curl -v http://cobim.internal/api/systemcode/list       <span class="c"># 접속 IP와 상태 코드 확인</span>
+curl -f http://cobim.internal/api/systemcode/list       <span class="c"># 4xx, 5xx를 에러로 표시</span>
+curl -s -o NUL -w "%{http_code}\n" http://cobim.internal/...   <span class="c"># 코드만 (Windows)</span></pre>
+
+  <div class="scroll"><table>
+    <tr><th>증상</th><th>의미</th></tr>
+    <tr><td>Could not connect, timeout</td><td>IP나 포트로 접속 자체가 안 됨</td></tr>
+    <tr><td>본문 없는 404</td><td>Envoy까지는 갔지만 맞는 라우트가 없음</td></tr>
+    <tr><td>본문 있는 404, 500</td><td>라우팅은 됐고 백엔드 앱이 보낸 에러</td></tr>
+    <tr><td>200과 데이터</td><td>정상</td></tr>
+  </table></div>
+
+  <h3>요청이 지나가는 순서대로 로그 보기</h3>
+  <p>envoy-gateway Pod는 컨트롤러라서 요청 로그가 없습니다. 가장 먼저 Envoy 프록시 Pod의 access log를 봅니다. 컨테이너가 두 개라 <code>-c envoy</code>가 필요합니다.</p>
+  <pre>kubectl logs -n envoy-gateway-system -f \
+  deploy/envoy-envoy-gateway-system-lakehouse-gateway-e4b9af21 -c envoy</pre>
+
+  <div class="scroll"><table>
+    <tr><th>응답 플래그</th><th>의미</th><th>볼 곳</th></tr>
+    <tr><td>로그 없음</td><td>요청이 Envoy까지 오지 않음</td><td>hosts, DNS, LB, 네트워크</td></tr>
+    <tr><td><code>NR</code></td><td>No Route. 맞는 라우트 없음</td><td>HTTPRoute의 hostname, parentRefs, path</td></tr>
+    <tr><td><code>UH</code></td><td>백엔드 Pod 없음</td><td>Service의 endpoints</td></tr>
+    <tr><td><code>UF</code></td><td>백엔드 연결 실패</td><td>Service 포트, Pod 상태</td></tr>
+    <tr><td><code>UT</code></td><td>백엔드 응답 타임아웃</td><td>앱 로그</td></tr>
+    <tr><td><code>-</code></td><td>정상 처리</td><td>결과가 이상하면 앱 로그</td></tr>
+  </table></div>
+  <p>그 앞단인 NHN Cloud LB는 콘솔의 Load Balancer 메뉴에서, 노드는 <code>tcpdump -i any port 30927 -nn</code>으로 확인할 수 있지만, 대부분은 Envoy 로그에서 갈립니다.</p>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="migrate">
+  <div class="dot">10</div>
+  <h2>운영 도메인 옮기기 전 테스트</h2>
+  <p class="sum">cobim.io는 기존 서버에서 유료 인증서로 운영 중입니다.</p>
+
+  <pre>hosts 없음:  cobim.io → DNS   → 기존 서버       <span class="c">(모든 사용자)</span>
+hosts 있음:  cobim.io → hosts → 133.186.152.59  <span class="c">(내 PC만)</span></pre>
+  <p>hosts는 DNS보다 먼저 확인되므로, 내 PC만 새 Envoy로 보내서 확인할 수 있습니다. 문제가 없으면 그때 DNS를 바꿉니다.</p>
+  <pre>nslookup cobim.io      <span class="c"># DNS가 지금 어디를 가리키는지</span>
+kubectl get httproute -n cobim cobim-user -o jsonpath='{.spec.parentRefs[*].name}'</pre>
+
+  <h3>HTTPS는 인증서를 옮겨야 합니다</h3>
+  <p>인증서는 서버가 아니라 도메인 기준으로 발급되므로 같은 파일을 새 서버에서 써도 됩니다. 기존 서버의 crt(체인 포함)와 key를 Secret으로 만들고 443 listener에 연결합니다.</p>
+  <pre>kubectl create secret tls cobim-io-tls -n cobim --cert=cobim.io.crt --key=cobim.io.key
+
+listeners:
+- name: https
+  protocol: HTTPS
+  port: 443
+  tls:
+    mode: Terminate
+    certificateRefs:
+    - name: cobim-io-tls</pre>
+
+  <div class="note warn">
+    <p>hosts를 바꾼 뒤에는 <code>ipconfig /flushdns</code>를 하고 브라우저를 재시작하거나 시크릿 창을 쓰세요. 크롬은 <code>chrome://net-internals/#dns</code>에서 캐시를 지울 수 있습니다.</p>
+    <p>기존 사이트가 HSTS를 쓰면 브라우저가 http를 https로 강제합니다. 인증서를 옮기기 전에는 curl의 http로 먼저 확인하세요.</p>
+    <p>테스트가 끝나면 hosts에서 꼭 지우세요. 남겨두면 내 PC만 엉뚱한 곳으로 갑니다.</p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="ch" id="todo">
+  <div class="dot">11</div>
+  <h2>남은 할 일과 명령어 모음</h2>
+  <p class="sum">지금 확인된 문제 하나와, 위에서부터 내려오며 점검하는 순서입니다.</p>
+
+  <div class="note err"><p><code>cobim-api-routes</code>의 <code>/api/message</code> 규칙이 실패 중입니다. <code>svc-bim-service-message</code>에 8080 포트가 없습니다. 실제 포트를 확인해 HTTPRoute를 맞추세요.</p></div>
+  <pre>kubectl get svc -n cobim svc-bim-service-message -o jsonpath='{.spec.ports}'</pre>
+
+  <h3>hosts 설정 정답</h3>
+  <pre>125.6.39.53   cobim.internal     <span class="c"># lakehouse-gateway에 붙은 라우트</span></pre>
+
+  <h3>점검 순서</h3>
+  <pre><span class="c"># 1. 컨트롤러가 살아 있나</span>
+kubectl get pod -n envoy-gateway-system -l control-plane=envoy-gateway
+kubectl logs -n envoy-gateway-system deploy/envoy-gateway --tail=50
+
+<span class="c"># 2. 설정 리소스</span>
+kubectl get gatewayclass
+kubectl get gateway -A
+kubectl get envoyproxy -A
+kubectl get httproute -A -o custom-columns=\
+NS:.metadata.namespace,NAME:.metadata.name,HOSTS:.spec.hostnames,GATEWAY:.spec.parentRefs[*].name
+
+<span class="c"># 3. 자동 생성된 Envoy와 그 IP</span>
+kubectl get deploy,pod,svc -n envoy-gateway-system \
+  -L gateway.envoyproxy.io/owning-gateway-namespace,gateway.envoyproxy.io/owning-gateway-name
+
+<span class="c"># 4. 라우트 상태 (Accepted, ResolvedRefs)</span>
+kubectl describe httproute -n cobim cobim-api-routes
+
+<span class="c"># 5. 백엔드</span>
+kubectl get svc,endpoints,pod -n cobim
+
+<span class="c"># 6. 실제 요청 확인 (PC에서)</span>
+curl -v -H "Host: cobim.internal" http://125.6.39.53/api/systemcode/list</pre>
+</section>
+
+</main>
+
+<footer>cobim 클러스터 기준으로 정리한 Envoy Gateway 학습 노트입니다.</footer>
+</div>
+</body>
+</html>
